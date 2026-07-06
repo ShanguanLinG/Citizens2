@@ -13,7 +13,6 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.Damageable;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
@@ -24,12 +23,9 @@ import net.citizensnpcs.api.gui.InventoryMenuSlot;
 import net.citizensnpcs.api.gui.Menu;
 import net.citizensnpcs.api.gui.MenuContext;
 import net.citizensnpcs.api.persistence.Persist;
-import net.citizensnpcs.api.util.SpigotUtil;
 import net.citizensnpcs.util.InventoryMultiplexer;
 import net.citizensnpcs.util.NMS;
 import net.citizensnpcs.util.Util;
-import net.kyori.adventure.platform.bukkit.BukkitComponentSerializer;
-import net.kyori.adventure.text.Component;
 
 public class ItemAction extends NPCShopAction {
     @Persist
@@ -182,10 +178,6 @@ public class ItemAction extends NPCShopAction {
     }
 
     private String stringify(ItemStack item) {
-        if (SUPPORT_TRANSLATABLE) {
-            return BukkitComponentSerializer.legacy().serialize(Component.text(item.getAmount() + " ")
-                    .append(Component.translatable().key(item.getTranslationKey())));
-        }
         return item.getAmount() + " " + Util.prettyEnum(item.getType());
     }
 
@@ -239,9 +231,6 @@ public class ItemAction extends NPCShopAction {
     private boolean tooDamaged(ItemStack toMatch) {
         if (!requireUndamaged)
             return false;
-
-        if (SpigotUtil.isUsing1_13API())
-            return toMatch.getItemMeta() instanceof Damageable && ((Damageable) toMatch.getItemMeta()).getDamage() != 0;
 
         return toMatch.getDurability() == toMatch.getType().getMaxDurability();
     }
@@ -326,13 +315,4 @@ public class ItemAction extends NPCShopAction {
         }
     }
 
-    private static boolean SUPPORT_TRANSLATABLE = true;
-
-    static {
-        try {
-            Class.forName("org.bukkit.Translatable");
-        } catch (ClassNotFoundException e) {
-            SUPPORT_TRANSLATABLE = false;
-        }
-    }
 }

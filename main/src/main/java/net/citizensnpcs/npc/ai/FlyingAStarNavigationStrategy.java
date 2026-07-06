@@ -148,13 +148,10 @@ public class FlyingAStarNavigationStrategy extends AbstractPathStrategy {
         }
         if (npc.getEntity().getType() == EntityType.PLAYER) {
             ItemStack stack = ((Player) npc.getEntity()).getInventory().getChestplate();
-            try {
-                if (stack != null && stack.getType() == Material.ELYTRA
-                        && !MinecraftBlockExaminer.canStandOn(current.getBlock().getRelative(BlockFace.DOWN))) {
-                    PlayerAnimation.START_ELYTRA.play((Player) npc.getEntity());
-                }
-            } catch (Exception ex) {
-                // 1.8 compatibility
+            Material elytra = Material.getMaterial("ELYTRA");
+            if (elytra != null && stack != null && stack.getType() == elytra
+                    && !MinecraftBlockExaminer.canStandOn(current.getBlock().getRelative(BlockFace.DOWN))) {
+                PlayerAnimation.START_ELYTRA.play((Player) npc.getEntity());
             }
         }
         Vector centeredDest = new Vector(vector.getX() + 0.5D, vector.getY() + 0.1D, vector.getZ() + 0.5D);

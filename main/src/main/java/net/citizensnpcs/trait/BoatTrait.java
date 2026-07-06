@@ -9,26 +9,22 @@ import net.citizensnpcs.api.trait.TraitName;
 @TraitName("boattrait")
 public class BoatTrait extends Trait {
     @Persist
-    private Boat.Type type;
+    private String type;
 
     public BoatTrait() {
         super("boattrait");
     }
 
-    public Boat.Type getType() {
+    public String getType() {
         return type;
     }
 
     @Override
     public void onSpawn() {
-        if (npc.getEntity() instanceof Boat) {
-            if (type != null) {
-                ((Boat) npc.getEntity()).setBoatType(type);
-            }
-        }
+        // Boat wood types were added after 1.8.8.
     }
 
-    public void setType(Boat.Type type) {
+    public void setType(String type) {
         this.type = type;
         onSpawn();
     }

@@ -1,7 +1,7 @@
 package net.citizensnpcs.trait;
 
-import java.util.List;
 import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -21,12 +21,9 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.inventory.InventoryType.SlotType;
-import org.bukkit.event.inventory.TradeSelectEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.Merchant;
-import org.bukkit.inventory.MerchantRecipe;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import com.google.common.base.Joiner;
@@ -936,32 +933,22 @@ public class ShopTrait extends Trait {
             this.shop = shop;
             this.player = player;
             Map<Integer, NPCShopItem> tradesMap = Maps.newHashMap();
-            Merchant merchant = Bukkit.createMerchant(shop.getTitle());
-            List<MerchantRecipe> recipes = Lists.newArrayList();
+            Inventory inventory = Bukkit.createInventory(player, 9 * 6, shop.getTitle());
+            int index = 0;
             for (NPCShopPage page : shop.pages) {
                 for (NPCShopItem item : page.items.values()) {
                     ItemStack result = item.getDisplayItem(player);
                     if (result == null)
                         continue;
-                    MerchantRecipe recipe = new MerchantRecipe(result.clone(), 100000000);
-                    for (NPCShopAction action : item.cost) {
-                        if (action instanceof ItemAction) {
-                            for (ItemStack stack : ((ItemAction) action).items) {
-                                recipe.addIngredient(stack.clone());
-                                if (recipe.getIngredients().size() == 2)
-                                    break;
-                            }
-                        }
-                    }
-                    if (recipe.getIngredients().size() == 0)
-                        continue;
-                    tradesMap.put(recipes.size(), item);
-                    recipes.add(recipe);
+                    if (index >= inventory.getSize())
+                        break;
+                    inventory.setItem(index, result.clone());
+                    tradesMap.put(index, item);
+                    index++;
                 }
             }
-            merchant.setRecipes(recipes);
             trades = tradesMap;
-            view = player.openMerchant(merchant, true);
+            view = player.openInventory(inventory);
         }
 
         @EventHandler
@@ -989,13 +976,6 @@ public class ShopTrait extends Trait {
             HandlerList.unregisterAll(this);
         }
 
-        @EventHandler
-        public void onTradeSelect(TradeSelectEvent evt) {
-            if (!evt.getView().equals(view))
-                return;
-            selectedTrade = evt.getIndex();
-            lastClickedTrade = -1;
-        }
     }
 
     public enum ShopType {

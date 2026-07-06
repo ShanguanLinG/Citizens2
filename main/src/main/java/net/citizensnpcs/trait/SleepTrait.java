@@ -1,10 +1,7 @@
 package net.citizensnpcs.trait;
 
 import org.bukkit.Location;
-import org.bukkit.block.Bed;
-import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Villager;
 
 import net.citizensnpcs.api.persistence.Persist;
 import net.citizensnpcs.api.trait.Trait;
@@ -41,23 +38,8 @@ public class SleepTrait extends Trait {
         if (npc.getEntity() instanceof Player) {
             Player player = (Player) npc.getEntity();
             npc.getOrAddTrait(EntityPoseTrait.class).setPose(EntityPose.SLEEPING);
-            if (SUPPORT_BLOCKDATA) {
-                try {
-                    if (at.getBlock().getBlockData() instanceof Bed || at.getBlock().getState() instanceof Bed) {
-                        player.sleep(at, true);
-                    } else {
-                        NMS.sleep(player, true);
-                    }
-                } catch (Throwable t) {
-                    SUPPORT_BLOCKDATA = false;
-                    NMS.sleep(player, true);
-                }
-            } else {
-                NMS.sleep(player, true);
-            }
+            NMS.sleep(player, true);
             sleeping = true;
-        } else if (npc.getEntity() instanceof Villager) {
-            sleeping = ((Villager) npc.getEntity()).sleep(at);
         }
     }
 
@@ -70,19 +52,7 @@ public class SleepTrait extends Trait {
         npc.getOrAddTrait(EntityPoseTrait.class).setPose(null);
         if (npc.getEntity() instanceof Player) {
             NMS.sleep((Player) npc.getEntity(), false);
-        } else if (npc.getEntity() instanceof Villager) {
-            ((Villager) npc.getEntity()).wakeup();
         }
         sleeping = false;
-    }
-
-    private static Boolean SUPPORT_BLOCKDATA = null;
-    static {
-        try {
-            Block.class.getMethod("getBlockData");
-            SUPPORT_BLOCKDATA = true;
-        } catch (NoSuchMethodException | SecurityException e) {
-            SUPPORT_BLOCKDATA = false;
-        }
     }
 }

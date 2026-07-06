@@ -402,14 +402,8 @@ public class RotationTrait extends Trait {
         }
 
         public float getTargetYaw() {
-            switch (npc.getEntity().getType()) {
-                case PHANTOM:
-                    return Util.clamp(targetYaw.get() + 45);
-                case ENDER_DRAGON:
-                    return Util.clamp(targetYaw.get() - 180);
-                default:
-                    return targetYaw.get();
-            }
+            return npc.getEntity().getType().name().equals("ENDER_DRAGON") ? Util.clamp(targetYaw.get() - 180)
+                    : targetYaw.get();
         }
 
         public boolean isActive() {

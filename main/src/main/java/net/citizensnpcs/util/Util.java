@@ -13,7 +13,6 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -199,9 +198,6 @@ public class Util {
     }
 
     public static Entity getEntity(UUID uuid) {
-        if (SUPPORTS_BUKKIT_GETENTITY)
-            return Bukkit.getEntity(uuid);
-
         for (World world : Bukkit.getWorlds()) {
             for (Entity entity : world.getEntities()) {
                 if (entity.getUniqueId().equals(uuid))
@@ -314,23 +310,11 @@ public class Util {
     }
 
     public static boolean isOffHand(PlayerInteractEntityEvent event) {
-        try {
-            return event.getHand() == org.bukkit.inventory.EquipmentSlot.OFF_HAND;
-        } catch (NoSuchMethodError e) {
-            return false;
-        } catch (NoSuchFieldError e) {
-            return false;
-        }
+        return false;
     }
 
     public static boolean isOffHand(PlayerInteractEvent event) {
-        try {
-            return event.getHand() == org.bukkit.inventory.EquipmentSlot.OFF_HAND;
-        } catch (NoSuchMethodError e) {
-            return false;
-        } catch (NoSuchFieldError e) {
-            return false;
-        }
+        return false;
     }
 
     public static String listValuesPretty(Object[] values) {
@@ -358,8 +342,7 @@ public class Util {
         if (setting.contains("*") || setting.isEmpty())
             return true;
         for (String part : Splitter.on(',').split(setting)) {
-            Material matchMaterial = SpigotUtil.isUsing1_13API() ? Material.matchMaterial(part, false)
-                    : Material.matchMaterial(part);
+            Material matchMaterial = Material.matchMaterial(part);
             if (matchMaterial == player.getInventory().getItemInHand().getType())
                 return true;
 
@@ -381,11 +364,14 @@ public class Util {
     public static Color parseColor(String string) {
         if (!string.contains(","))
             return Color.fromRGB(Integer.decode(string));
-        List<Integer> list = Splitter.on(',').splitToStream(string).map(Integer::parseInt).collect(Collectors.toList());
+        List<Integer> list = new ArrayList<Integer>();
+        for (String part : Splitter.on(',').split(string)) {
+            list.add(Integer.parseInt(part));
+        }
         if (list.size() == 3) {
             return Color.fromRGB(list.get(0), list.get(1), list.get(2));
         } else if (list.size() == 4) {
-            return Color.fromARGB(list.get(0), list.get(1), list.get(2), list.get(3));
+            return Color.fromRGB(list.get(1), list.get(2), list.get(3));
         }
         throw new NumberFormatException();
     }
@@ -492,8 +478,6 @@ public class Util {
             for (Block block : blocks) {
                 if (type != null) {
                     player.sendBlockChange(block.getLocation(loc), type, (byte) 0);
-                } else if (SpigotUtil.isUsing1_13API()) {
-                    player.sendBlockChange(block.getLocation(loc), block.getBlockData());
                 } else {
                     player.sendBlockChange(block.getLocation(loc), block.getType(), block.getData());
                 }
@@ -616,16 +600,10 @@ public class Util {
 
     private static String BEDROCK_NAME_PREFIX = ".";
     private static final Scoreboard DUMMY_SCOREBOARD = Bukkit.getScoreboardManager().getNewScoreboard();
-    private static boolean SUPPORTS_BUKKIT_GETENTITY = true;
     private static final DecimalFormat TWO_DIGIT_DECIMAL = new DecimalFormat();
 
     static {
         TWO_DIGIT_DECIMAL.setMaximumFractionDigits(2);
-        try {
-            Bukkit.class.getMethod("getEntity", UUID.class);
-        } catch (Exception e) {
-            SUPPORTS_BUKKIT_GETENTITY = false;
-        }
         Class<?> floodgateApiHolderClass;
         try {
             floodgateApiHolderClass = Class.forName("org.geysermc.floodgate.api.InstanceHolder");

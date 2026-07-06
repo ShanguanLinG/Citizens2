@@ -125,8 +125,7 @@ public enum PlayerAnimation {
             if (this == STOP_USE_ITEM)
                 return;
 
-            ItemStack using = this == START_USE_MAINHAND_ITEM ? player.getItemInHand()
-                    : player.getInventory().getItemInOffHand();
+            ItemStack using = this == START_USE_MAINHAND_ITEM ? player.getItemInHand() : null;
             if (using != null && BAD_ITEMS_TO_USE.contains(using.getType())
                     && player.hasMetadata("citizens-using-item-remaining-ticks")) {
                 int remainingTicks = player.getMetadata("citizens-using-item-remaining-ticks").get(0).asInt();

@@ -1,7 +1,6 @@
 package net.citizensnpcs.editor;
 
 import org.bukkit.Material;
-import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Enderman;
 import org.bukkit.event.Event.Result;
 import org.bukkit.event.inventory.InventoryAction;
@@ -19,7 +18,6 @@ import net.citizensnpcs.api.gui.MenuContext;
 import net.citizensnpcs.api.gui.MenuPattern;
 import net.citizensnpcs.api.gui.MenuSlot;
 import net.citizensnpcs.api.npc.NPC;
-import net.citizensnpcs.api.util.SpigotUtil;
 
 @Menu(title = "NPC Equipment", type = InventoryType.HOPPER, dimensions = { 0, 5 })
 @MenuSlot(slot = { 0, 0 }, material = Material.ENDER_PEARL, amount = 1, lore = "Place a block to hold here ->")
@@ -35,13 +33,8 @@ public class EndermanEquipperGUI extends InventoryMenuPage {
 
     @SuppressWarnings("deprecation")
     private Material getCarriedMaterial() {
-        if (SpigotUtil.isUsing1_13API()) {
-            BlockData carried = ((Enderman) npc.getEntity()).getCarriedBlock();
-            return carried == null ? null : carried.getMaterial();
-        } else {
-            MaterialData carried = ((Enderman) npc.getEntity()).getCarriedMaterial();
-            return carried == null ? null : carried.getItemType();
-        }
+        MaterialData carried = ((Enderman) npc.getEntity()).getCarriedMaterial();
+        return carried == null ? null : carried.getItemType();
     }
 
     @Override
@@ -63,13 +56,8 @@ public class EndermanEquipperGUI extends InventoryMenuPage {
             event.setResult(Result.DENY);
             return;
         }
-        if (SpigotUtil.isUsing1_13API()) {
-            ((Enderman) npc.getEntity()).setCarriedBlock(
-                    event.getAction() == InventoryAction.PLACE_ALL ? event.getResultItem().getType().createBlockData()
-                            : null);
-        } else {
-            ((Enderman) npc.getEntity()).setCarriedMaterial(
-                    event.getAction() == InventoryAction.PLACE_ALL ? event.getResultItem().getData() : null);
-        }
+        ((Enderman) npc.getEntity())
+                .setCarriedMaterial(event.getAction() == InventoryAction.PLACE_ALL ? event.getResultItem().getData()
+                        : null);
     }
 }

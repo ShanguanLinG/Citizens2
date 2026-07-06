@@ -25,7 +25,6 @@ import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.reflect.FieldAccessException;
 import com.comphenix.protocol.wrappers.PlayerInfoData;
 import com.comphenix.protocol.wrappers.WrappedChatComponent;
-import com.comphenix.protocol.wrappers.WrappedDataValue;
 import com.comphenix.protocol.wrappers.WrappedGameProfile;
 import com.comphenix.protocol.wrappers.WrappedSignedProperty;
 import com.comphenix.protocol.wrappers.WrappedWatchableObject;
@@ -95,45 +94,6 @@ public class ProtocolLibListener implements Listener {
                         }
                         if (delta) {
                             packet.getWatchableCollectionModifier().write(0, wwo);
-                        }
-                    } else {
-                        List<WrappedDataValue> wdvs = packet.getDataValueCollectionModifier().readSafely(0);
-                        if (wdvs == null)
-                            return;
-
-                        for (WrappedDataValue wdv : wdvs) {
-                            switch (wdv.getIndex()) {
-                                case 0:
-                                    if (sneaking) {
-                                        byte flags = (byte) (((Number) wdv.getValue()).byteValue() | 0x02);
-                                        wdv.setValue(flags);
-                                        delta = true;
-                                    }
-                                    break;
-                                case 2:
-                                    if (fakeName != null) {
-                                        wdv.setRawValue(fakeName);
-                                        delta = true;
-                                    }
-                                    break;
-                                case 22:
-                                    if (version <= 762 && fakeName != null
-                                            && npc.getEntity().getType() == EntityType.TEXT_DISPLAY) {
-                                        wdv.setRawValue(((Optional<?>) fakeName).get());
-                                        delta = true;
-                                    }
-                                    break;
-                                case 23:
-                                    if (version > 762 && fakeName != null
-                                            && npc.getEntity().getType() == EntityType.TEXT_DISPLAY) {
-                                        wdv.setRawValue(((Optional<?>) fakeName).get());
-                                        delta = true;
-                                    }
-                                    break;
-                            }
-                        }
-                        if (delta) {
-                            packet.getDataValueCollectionModifier().write(0, wdvs);
                         }
                     }
                 }

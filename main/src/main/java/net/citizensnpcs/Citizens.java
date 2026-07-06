@@ -85,6 +85,8 @@ import net.citizensnpcs.util.Util;
 import net.milkbowl.vault.economy.Economy;
 
 public class Citizens extends JavaPlugin implements CitizensPlugin {
+    private static final String SUPPORTED_MINECRAFT_PACKAGE = "v1_8_R3";
+
     private final List<NPCRegistry> anonymousRegistries = Lists.newArrayList();
     private final CommandManager commands = new CommandManager();
     private Settings config;
@@ -114,14 +116,6 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
         public void setTexture(String texture, SkullMeta meta) {
             GameProfile profile = NMS.getProfile(meta);
             if (profile == null) {
-                if (SUPPORT_OWNER_PROFILE) {
-                    try {
-                        profile = new GameProfile(meta.getOwnerProfile().getUniqueId(),
-                                meta.getOwnerProfile().getName());
-                    } catch (Exception e) {
-                        SUPPORT_OWNER_PROFILE = false;
-                    }
-                }
                 if (profile == null) {
                     profile = new GameProfile(UUID.randomUUID(), null);
                 }
@@ -372,11 +366,11 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
         // Disable if the server is not using the compatible Minecraft version
         String mcVersion = SpigotUtil.getMinecraftPackage();
         try {
+            if (!SUPPORTED_MINECRAFT_PACKAGE.equals(mcVersion))
+                throw new ClassNotFoundException(mcVersion);
             NMS.loadBridge(mcVersion);
-        } catch (Exception e) {
-            if (Messaging.isDebugging()) {
-                e.printStackTrace();
-            }
+        } catch (Throwable e) {
+            e.printStackTrace();
             Messaging.severeTr(Messages.CITIZENS_INCOMPATIBLE, getDescription().getVersion(), mcVersion);
             NMS.shutdown();
             CitizensAPI.shutdown();

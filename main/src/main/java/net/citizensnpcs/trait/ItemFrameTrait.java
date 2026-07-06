@@ -52,12 +52,6 @@ public class ItemFrameTrait extends Trait {
             if (item != null) {
                 frame.setItem(item);
             }
-            if (fixed != null) {
-                frame.setFixed(fixed);
-            } else {
-                frame.setFixed(npc.isProtected());
-            }
-            frame.setVisible(visible);
         }
     }
 

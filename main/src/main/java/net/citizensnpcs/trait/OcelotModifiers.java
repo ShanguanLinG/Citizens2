@@ -5,7 +5,6 @@ import org.bukkit.entity.Ocelot;
 import net.citizensnpcs.api.persistence.Persist;
 import net.citizensnpcs.api.trait.Trait;
 import net.citizensnpcs.api.trait.TraitName;
-import net.citizensnpcs.trait.versioned.CatTrait;
 import net.citizensnpcs.util.NMS;
 
 /**
@@ -22,11 +21,6 @@ public class OcelotModifiers extends Trait {
 
     public OcelotModifiers() {
         super("ocelotmodifiers");
-    }
-
-    private void migrateToCat() {
-        npc.getOrAddTrait(CatTrait.class).setSitting(sitting);
-        npc.getOrAddTrait(CatTrait.class).setType(type);
     }
 
     @Override
@@ -53,14 +47,9 @@ public class OcelotModifiers extends Trait {
             return;
         Ocelot ocelot = (Ocelot) npc.getEntity();
         NMS.setSitting(ocelot, sitting);
-        if (!SUPPORTS_CAT_TYPE) {
-            migrateToCat();
-            return;
-        }
         try {
             ocelot.setCatType(type);
         } catch (UnsupportedOperationException ex) {
-            migrateToCat();
             SUPPORTS_CAT_TYPE = false;
         }
     }

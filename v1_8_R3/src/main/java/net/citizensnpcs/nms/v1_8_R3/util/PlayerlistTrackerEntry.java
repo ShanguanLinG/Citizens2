@@ -106,7 +106,7 @@ public class PlayerlistTrackerEntry extends EntityTrackerEntry {
     public void updateLastPlayer(EntityPlayer lastUpdatedPlayer) {
         if (lastUpdatedPlayer != null) {
             Bukkit.getPluginManager().callEvent(
-                    new NPCLinkToPlayerEvent(((NPCHolder) tracker).getNPC(), lastUpdatedPlayer.getBukkitEntity()));
+                    new NPCLinkToPlayerEvent(((NPCHolder) tracker).getNPC(), lastUpdatedPlayer.getBukkitEntity(), false));
             lastUpdatedPlayer = null;
         }
     }

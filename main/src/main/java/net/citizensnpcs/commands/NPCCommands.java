@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -29,7 +30,6 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.Rotation;
 import org.bukkit.Sound;
 import org.bukkit.World;
-import org.bukkit.attribute.Attribute;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.command.CommandSender;
@@ -45,7 +45,6 @@ import org.bukkit.entity.Ocelot;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Rabbit;
 import org.bukkit.entity.Villager.Profession;
-import org.bukkit.entity.Wolf;
 import org.bukkit.entity.Zombie;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.inventory.InventoryHolder;
@@ -67,7 +66,6 @@ import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.ai.speech.SpeechContext;
 import net.citizensnpcs.api.ai.tree.StatusMapper;
 import net.citizensnpcs.api.command.Arg;
-import net.citizensnpcs.api.command.Arg.CompletionsProvider.OptionalEnumCompletions;
 import net.citizensnpcs.api.command.Command;
 import net.citizensnpcs.api.command.CommandContext;
 import net.citizensnpcs.api.command.CommandMessages;
@@ -420,14 +418,14 @@ public class NPCCommands {
             max = 3,
             permission = "citizens.npc.attribute")
     public void attribute(CommandContext args, CommandSender sender, NPC npc,
-            @Arg(value = 1, completionsProvider = OptionalAttributeCompletions.class) String attribute,
+            @Arg(1) String attribute,
             @Arg(2) Double value) {
         AttributeTrait trait = npc.getOrAddTrait(AttributeTrait.class);
         if (value == null) {
-            trait.setDefaultAttribute(Attribute.valueOf(attribute));
+            trait.setDefaultAttribute(attribute);
             Messaging.sendTr(sender, Messages.ATTRIBUTE_RESET, attribute);
         } else {
-            trait.setAttributeValue(Attribute.valueOf(attribute), value);
+            trait.setAttributeValue(attribute, value);
             Messaging.sendTr(sender, Messages.ATTRIBUTE_SET, attribute, value);
         }
     }
@@ -441,13 +439,11 @@ public class NPCCommands {
             max = 1,
             permission = "citizens.npc.boat")
     public void boat(CommandContext args, CommandSender sender, NPC npc,
-            @Flag(value = "type", completionsProvider = OptionalBoatTypeCompletions.class) String stype)
-            throws CommandException {
+            @Flag("type") String stype) throws CommandException {
         if (stype == null)
             throw new CommandUsageException();
-        Boat.Type type = Boat.Type.valueOf(stype);
-        npc.getOrAddTrait(BoatTrait.class).setType(type);
-        Messaging.sendTr(sender, Messages.BOAT_TYPE_SET, type);
+        npc.getOrAddTrait(BoatTrait.class).setType(stype);
+        Messaging.sendTr(sender, Messages.BOAT_TYPE_SET, stype);
     }
 
     @Command(
@@ -2283,7 +2279,10 @@ public class NPCCommands {
             if (option.equalsIgnoreCase("me") || option.equalsIgnoreCase("here")) {
                 loc = args.getSenderLocation();
             } else if (option.equalsIgnoreCase("cursor")) {
-                loc = ((Player) sender).getTargetBlockExact(32).getLocation();
+                Block target = ((Player) sender).getTargetBlock((HashSet<Byte>) null, 32);
+                if (target == null)
+                    throw new CommandUsageException();
+                loc = target.getLocation();
             } else
                 throw new CommandUsageException();
         } else {
@@ -2455,7 +2454,7 @@ public class NPCCommands {
             @Arg(value = 2, defValue = "1") Float volume, @Arg(value = 3, defValue = "1") Float pitch,
             @Flag("at") Location at) throws CommandException {
         Location loc = at == null ? npc.getStoredLocation() : at;
-        loc.getWorld().playSound(loc, sound, volume, pitch);
+        loc.getWorld().playSound(loc, Sound.valueOf(sound.toUpperCase(Locale.ROOT)), volume, pitch);
     }
 
     @Command(
@@ -2632,7 +2631,7 @@ public class NPCCommands {
             return;
         }
         if (eid != null) {
-            Entity entity = Bukkit.getServer().getEntity(eid);
+            Entity entity = Util.getEntity(eid);
             if (entity != null && (npc = CitizensAPI.getNPCRegistry().getNPC(entity)) != null
                     && npc.getOrAddTrait(Owner.class).isOwnedBy(sender)) {
                 history.add(sender, new RemoveNPCHistoryItem(npc));
@@ -3033,7 +3032,7 @@ public class NPCCommands {
             Messaging.sendTr(sender, Messages.SKIN_SET, npc.getName(), args.getString(1));
             return;
         } else if (args.hasFlag('s') && npc.getEntity() instanceof Player) {
-            ItemStack is = new ItemStack(Material.PLAYER_HEAD);
+            ItemStack is = new ItemStack(Material.SKULL_ITEM);
             SkullMeta sm = (SkullMeta) is.getItemMeta();
             NMS.setProfile(sm, NMS.getProfile((Player) npc.getEntity()));
             is.setItemMeta(sm);
@@ -3329,7 +3328,7 @@ public class NPCCommands {
         Entity toTarget = args.argsLength() < 2 && sender instanceof Player ? (Player) sender
                 : Bukkit.getPlayer(args.getString(1));
         if (toTarget == null && args.argsLength() == 2) {
-            toTarget = Bukkit.getEntity(UUID.fromString(args.getString(1)));
+            toTarget = Util.getEntity(UUID.fromString(args.getString(1)));
         }
         if (toTarget != null) {
             npc.getNavigator().setTarget(toTarget, args.hasFlag('a'));
@@ -3408,7 +3407,7 @@ public class NPCCommands {
         if (args.argsLength() > 1 && args.getString(1).equalsIgnoreCase("cursor")) {
             if (!(sender instanceof Player))
                 throw new ServerCommandException();
-            Block target = ((Player) sender).getTargetBlock(null, 64);
+            Block target = ((Player) sender).getTargetBlock((HashSet<Byte>) null, 64);
             if (target == null)
                 throw new CommandException(Messages.MISSING_TP_CURSOR_BLOCK);
             to = target.getRelative(BlockFace.UP).getLocation();
@@ -3635,20 +3634,16 @@ public class NPCCommands {
 
     @Command(
             aliases = { "npc" },
-            usage = "wolf (-s(itting) a(ngry) t(amed) i(nterested)) --collar [hex rgb color|name] --variant [variant]",
+            usage = "wolf (-s(itting) a(ngry) t(amed)) --collar [hex rgb color|name]",
             desc = "",
             modifiers = { "wolf" },
             min = 1,
             max = 1,
             requiresFlags = true,
-            flags = "sati",
+            flags = "sat",
             permission = "citizens.npc.wolf")
     @Requirements(selected = true, ownership = true, types = EntityType.WOLF)
-    public void wolf(CommandContext args, CommandSender sender, NPC npc, @Flag("collar") String collar,
-            @Flag(
-                    value = "variant",
-                    completions = { "ASHEN", "BLACK", "CHESTNUT", "PALE", "RUSTY", "SNOWY", "STRIPED", "WOODS",
-                            "SPOTTED" }) String variant)
+    public void wolf(CommandContext args, CommandSender sender, NPC npc, @Flag("collar") String collar)
             throws CommandException {
         WolfModifiers trait = npc.getOrAddTrait(WolfModifiers.class);
         if (args.hasFlag('a')) {
@@ -3659,18 +3654,6 @@ public class NPCCommands {
         }
         if (args.hasFlag('t')) {
             trait.setTamed(!trait.isTamed());
-        }
-        if (args.hasFlag('i')) {
-            trait.setInterested(!trait.isInterested());
-        }
-        if (variant != null) {
-            variant = variant.toUpperCase(Locale.ROOT);
-            try {
-                Wolf.Variant.class.getField(variant);
-            } catch (Throwable t) {
-                throw new CommandUsageException();
-            }
-            trait.setVariant(variant);
         }
         if (collar != null) {
             String unparsed = collar;
@@ -3691,19 +3674,5 @@ public class NPCCommands {
         }
         Messaging.sendTr(sender, Messages.WOLF_TRAIT_UPDATED, npc.getName(), trait.isAngry(), trait.isSitting(),
                 trait.isTamed(), trait.getCollarColor().name());
-    }
-
-    public static class OptionalAttributeCompletions extends OptionalEnumCompletions {
-        @Override
-        public String getEnumClassName() {
-            return "org.bukkit.attribute.Attribute";
-        }
-    }
-
-    public static class OptionalBoatTypeCompletions extends OptionalEnumCompletions {
-        @Override
-        public String getEnumClassName() {
-            return "org.bukkit.entity.Boat.Type";
-        }
     }
 }

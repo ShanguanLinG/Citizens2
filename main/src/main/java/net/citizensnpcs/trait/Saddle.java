@@ -1,12 +1,10 @@
 package net.citizensnpcs.trait;
 
 import org.bukkit.entity.Pig;
-import org.bukkit.entity.Steerable;
 
 import net.citizensnpcs.api.persistence.Persist;
 import net.citizensnpcs.api.trait.Trait;
 import net.citizensnpcs.api.trait.TraitName;
-import net.citizensnpcs.util.Util;
 
 /**
  * Persists saddle metadata.
@@ -25,7 +23,7 @@ public class Saddle extends Trait implements Toggleable {
 
     @Override
     public void onSpawn() {
-        if (Util.optionalEntitySet("PIG", "STRIDER").contains(npc.getEntity().getType())) {
+        if (npc.getEntity() instanceof Pig) {
             steerable = true;
             updateSaddleState();
         } else {
@@ -48,14 +46,7 @@ public class Saddle extends Trait implements Toggleable {
     }
 
     private void updateSaddleState() {
-        if (SUPPORT_STEERABLE) {
-            try {
-                ((Steerable) npc.getEntity()).setSaddle(saddle);
-            } catch (Throwable t) {
-                SUPPORT_STEERABLE = false;
-                ((Pig) npc.getEntity()).setSaddle(saddle);
-            }
-        } else {
+        if (npc.getEntity() instanceof Pig) {
             ((Pig) npc.getEntity()).setSaddle(saddle);
         }
     }
@@ -63,6 +54,4 @@ public class Saddle extends Trait implements Toggleable {
     public boolean useSaddle() {
         return saddle;
     }
-
-    private static boolean SUPPORT_STEERABLE = true;
 }

@@ -407,7 +407,7 @@ public class CitizensNavigator implements Navigator, Runnable {
             npc.getEntity().setVelocity(velocity);
             NMS.cancelMoveDestination(npc.getEntity());
         }
-        if (!SUPPORT_CHUNK_TICKETS || !CitizensAPI.hasImplementation() || !CitizensAPI.getPlugin().isEnabled())
+        if (!CitizensAPI.hasImplementation() || !CitizensAPI.getPlugin().isEnabled())
             return;
 
         Bukkit.getScheduler().scheduleSyncDelayedTask(CitizensAPI.getPlugin(),
@@ -515,7 +515,7 @@ public class CitizensNavigator implements Navigator, Runnable {
     }
 
     private void updateTicket(Location target) {
-        if (!SUPPORT_CHUNK_TICKETS || !CitizensAPI.hasImplementation() || !CitizensAPI.getPlugin().isEnabled())
+        if (!CitizensAPI.hasImplementation() || !CitizensAPI.getPlugin().isEnabled())
             return;
 
         if (target != null && activeTicket != null
@@ -524,26 +524,17 @@ public class CitizensNavigator implements Navigator, Runnable {
             return;
         }
         if (activeTicket != null) {
-            try {
-                activeTicket.getChunk().removePluginChunkTicket(CitizensAPI.getPlugin());
-            } catch (NoSuchMethodError e) {
-                SUPPORT_CHUNK_TICKETS = false;
-                activeTicket = null;
-            }
+            activeTicket = null;
         }
         if (target == null) {
             activeTicket = null;
             return;
         }
         activeTicket = target.clone();
-        try {
-            activeTicket.getChunk().addPluginChunkTicket(CitizensAPI.getPlugin());
-        } catch (NoSuchMethodError e) {
-            SUPPORT_CHUNK_TICKETS = false;
-            activeTicket = null;
+        if (!activeTicket.getChunk().isLoaded()) {
+            activeTicket.getChunk().load();
         }
     }
 
-    private static boolean SUPPORT_CHUNK_TICKETS = true;
     private static int UNINITIALISED_SPEED = Integer.MIN_VALUE;
 }

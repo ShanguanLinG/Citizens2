@@ -133,12 +133,9 @@ class ProfileFetchThread implements Runnable {
         }
         NMS.findProfilesByNames(javaNames.toArray(new String[javaNames.size()]), new ProfileLookupCallback() {
             @SuppressWarnings("unused")
-            public void onProfileLookupFailed(GameProfile profile, Exception e) {
-                onProfileLookupFailed(profile.getName(), e);
-            }
-
             @Override
-            public void onProfileLookupFailed(String profileName, Exception e) {
+            public void onProfileLookupFailed(GameProfile profile, Exception e) {
+                String profileName = profile.getName();
                 if (Messaging.isDebugging()) {
                     Messaging.debug("Profile lookup for player '" + profileName + "' failed: " + getExceptionMsg(e));
                     Messaging.debug(Throwables.getStackTraceAsString(e));

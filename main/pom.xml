@@ -11,7 +11,7 @@
     <artifactId>citizens-main</artifactId>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <craftbukkit.version>1.21-R0.1-SNAPSHOT</craftbukkit.version>
+        <craftbukkit.version>1.8.8-R0.1-SNAPSHOT</craftbukkit.version>
         <placeholderapi.version>2.11.5</placeholderapi.version>
         <citizensapi.version>${project.version}</citizensapi.version>
         <worldguard.version>7.1.0-SNAPSHOT</worldguard.version>
@@ -63,7 +63,7 @@
         <dependency>
             <groupId>com.comphenix.protocol</groupId>
             <artifactId>ProtocolLib</artifactId>
-            <version>5.0.0</version>
+            <version>4.8.0</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -172,6 +172,9 @@
                     <release>8</release>
                     <source>1.8</source>
                     <target>1.8</target>
+                    <excludes>
+                        <exclude>net/citizensnpcs/trait/versioned/*.java</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
             <plugin>

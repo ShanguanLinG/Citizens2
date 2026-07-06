@@ -1,6 +1,7 @@
 package net.citizensnpcs.util;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -24,6 +25,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.scoreboard.NameTagVisibility;
 import org.bukkit.scoreboard.Team;
 import org.bukkit.util.Vector;
 
@@ -45,9 +47,6 @@ import net.citizensnpcs.npc.ai.NPCHolder;
 import net.citizensnpcs.trait.EntityPoseTrait.EntityPose;
 import net.citizensnpcs.trait.MirrorTrait;
 import net.citizensnpcs.trait.SneakTrait;
-import net.citizensnpcs.trait.versioned.ArmadilloTrait.ArmadilloState;
-import net.citizensnpcs.trait.versioned.CamelTrait.CamelPose;
-import net.citizensnpcs.trait.versioned.SnifferTrait.SnifferState;
 import net.citizensnpcs.util.EntityPacketTracker.PacketAggregator;
 import net.citizensnpcs.util.NMS.MinecraftNavigationType;
 
@@ -80,7 +79,7 @@ public interface NMSBridge {
     public BoundingBox getBoundingBox(Entity handle);
 
     public default double getBoundingBoxHeight(Entity entity) {
-        return entity.getHeight();
+        return 1;
     }
 
     public BoundingBox getCollisionBox(Block block);
@@ -130,7 +129,7 @@ public interface NMSBridge {
     public float getVerticalMovement(Entity entity);
 
     public default Collection<Player> getViewingPlayers(Entity entity) {
-        return ((Player) entity).getTrackedBy();
+        return Collections.emptyList();
     }
 
     public double getWidth(Entity entity);
@@ -202,14 +201,14 @@ public interface NMSBridge {
         throw new UnsupportedOperationException();
     }
 
-    public default void setArmadilloState(Entity entity, ArmadilloState state) {
+    public default void setArmadilloState(Entity entity, Object state) {
     }
 
     public void setBodyYaw(Entity entity, float yaw);
 
     public void setBoundingBox(Entity entity, BoundingBox box);
 
-    public default void setCamelPose(Entity entity, CamelPose pose) {
+    public default void setCamelPose(Entity entity, Object pose) {
         throw new UnsupportedOperationException();
     }
 
@@ -276,13 +275,13 @@ public interface NMSBridge {
         }
     }
 
-    public default void setSnifferState(Entity entity, SnifferState state) {
+    public default void setSnifferState(Entity entity, Object state) {
     }
 
     public void setStepHeight(Entity entity, float height);
 
     public default void setTeamNameTagVisible(Team team, boolean visible) {
-        team.setOption(Team.Option.NAME_TAG_VISIBILITY, visible ? Team.OptionStatus.ALWAYS : Team.OptionStatus.NEVER);
+        team.setNameTagVisibility(visible ? NameTagVisibility.ALWAYS : NameTagVisibility.NEVER);
     }
 
     public default void setTextDisplayComponent(Entity entity, Object component) {
@@ -294,7 +293,6 @@ public interface NMSBridge {
     }
 
     public default void setWitherInvulnerableTicks(Wither wither, int ticks) {
-        wither.setInvulnerabilityTicks(ticks);
     }
 
     public boolean shouldJump(Entity entity);

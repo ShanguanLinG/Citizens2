@@ -299,11 +299,8 @@ public class LookClose extends Trait implements Toggleable {
         rot.getPhysicalSession().rotateToFace(lookingAt);
 
         if (npc.getEntity().getType().name().equals("SHULKER")) {
-            boolean wasSilent = npc.getEntity().isSilent();
-            npc.getEntity().setSilent(true);
             NMS.setPeekShulker(npc.getEntity(),
                     100 - 4 * (int) Math.floor(npc.getStoredLocation().distanceSquared(lookingAt.getLocation())));
-            npc.getEntity().setSilent(wasSilent);
         }
     }
 

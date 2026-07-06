@@ -2,7 +2,6 @@ package net.citizensnpcs.trait;
 
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Ageable;
-import org.bukkit.entity.Tadpole;
 import org.bukkit.entity.Zombie;
 
 import net.citizensnpcs.api.persistence.Persist;
@@ -53,8 +52,6 @@ public class Age extends Trait implements Toggleable {
         } else {
             if (npc.getEntity() instanceof Zombie) {
                 ((Zombie) npc.getEntity()).setBaby(age < 0);
-            } else if (npc.isSpawned() && npc.getEntity().getType().name().equals("TADPOLE")) {
-                ((Tadpole) npc.getEntity()).setAge(age);
             }
             ageable = null;
         }

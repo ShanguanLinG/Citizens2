@@ -282,6 +282,11 @@ public class CitizensNPC extends AbstractNPC {
     }
 
     @Override
+    public boolean shouldRemoveFromPlayerList() {
+        return data().get(NPC.Metadata.REMOVE_FROM_PLAYERLIST, Setting.DISABLE_TABLIST.asBoolean());
+    }
+
+    @Override
     public boolean shouldRemoveFromTabList() {
         return data().get(NPC.Metadata.REMOVE_FROM_TABLIST, Setting.DISABLE_TABLIST.asBoolean());
     }
@@ -504,12 +509,6 @@ public class CitizensNPC extends AbstractNPC {
                     NMS.trySwim(getEntity());
                 }
             }
-            if (SUPPORT_GLOWING && data().has(NPC.Metadata.GLOWING)) {
-                getEntity().setGlowing(data().get(NPC.Metadata.GLOWING, false));
-            }
-            if (SUPPORT_SILENT && data().has(NPC.Metadata.SILENT)) {
-                getEntity().setSilent(Boolean.parseBoolean(data().get(NPC.Metadata.SILENT).toString()));
-            }
             boolean isLiving = getEntity() instanceof LivingEntity;
             if (isUpdating(NPCUpdate.PACKET)) {
                 if (data().get(NPC.Metadata.KEEP_CHUNK_LOADED, Setting.KEEP_CHUNKS_LOADED.asBoolean())) {
@@ -611,25 +610,13 @@ public class CitizensNPC extends AbstractNPC {
     }
 
     private static SetMultimap<ChunkCoord, NPC> CHUNK_LOADERS = HashMultimap.create();
-    private static boolean SUPPORT_GLOWING = false;
     private static boolean SUPPORT_NODAMAGE_TICKS = false;
     private static boolean SUPPORT_PICKUP_ITEMS = false;
-    private static boolean SUPPORT_SILENT = false;
     private static boolean SUPPORT_USE_ITEM = true;
     static {
         try {
             Entity.class.getMethod("setNoDamageTicks", int.class);
             SUPPORT_NODAMAGE_TICKS = true;
-        } catch (NoSuchMethodException | SecurityException e) {
-        }
-        try {
-            Entity.class.getMethod("setGlowing", boolean.class);
-            SUPPORT_GLOWING = true;
-        } catch (NoSuchMethodException | SecurityException e) {
-        }
-        try {
-            Entity.class.getMethod("setSilent", boolean.class);
-            SUPPORT_SILENT = true;
         } catch (NoSuchMethodException | SecurityException e) {
         }
         try {

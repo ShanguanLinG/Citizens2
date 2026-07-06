@@ -1,12 +1,7 @@
 package net.citizensnpcs.trait;
 
-import java.util.Map;
-
 import org.bukkit.DyeColor;
 import org.bukkit.entity.Wolf;
-import org.bukkit.entity.Wolf.Variant;
-
-import com.google.common.collect.Maps;
 
 import net.citizensnpcs.api.persistence.Persist;
 import net.citizensnpcs.api.trait.Trait;
@@ -104,30 +99,7 @@ public class WolfModifiers extends Trait {
             if (angry) {
                 wolf.setTarget(wolf);
             }
-            if (variant != null) {
-                wolf.setVariant((Variant) VARIANT_CACHE.computeIfAbsent(variant, v -> {
-                    try {
-                        return Wolf.Variant.class.getField(variant).get(null);
-                    } catch (Throwable e) {
-                        e.printStackTrace();
-                        return null;
-                    }
-                }));
-            }
             wolf.setTamed(tamed);
-            if (SUPPORT_SET_INTERESTED) {
-                wolf.setInterested(interested);
-            }
-        }
-    }
-
-    private static boolean SUPPORT_SET_INTERESTED = true;
-    private static final Map<String, Object> VARIANT_CACHE = Maps.newHashMap();
-    static {
-        try {
-            Wolf.class.getMethod("setInterested", boolean.class);
-        } catch (Throwable e) {
-            SUPPORT_SET_INTERESTED = false;
         }
     }
 }

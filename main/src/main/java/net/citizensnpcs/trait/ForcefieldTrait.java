@@ -8,6 +8,7 @@ import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.persistence.Persist;
 import net.citizensnpcs.api.trait.Trait;
 import net.citizensnpcs.api.trait.TraitName;
+import net.citizensnpcs.util.NMS;
 
 @TraitName("forcefieldtrait")
 public class ForcefieldTrait extends Trait {
@@ -23,7 +24,7 @@ public class ForcefieldTrait extends Trait {
     }
 
     public double getHeight() {
-        return height == null ? npc.getEntity().getHeight() : height;
+        return height == null ? NMS.getBoundingBoxHeight(npc.getEntity()) : height;
     }
 
     public double getStrength() {
@@ -31,7 +32,7 @@ public class ForcefieldTrait extends Trait {
     }
 
     public double getWidth() {
-        return width == null ? npc.getEntity().getWidth() : width;
+        return width == null ? NMS.getWidth(npc.getEntity()) : width;
     }
 
     @Override
@@ -46,7 +47,7 @@ public class ForcefieldTrait extends Trait {
                 new double[] { base.getX() - width / 1.9, base.getY(), base.getZ() - width / 1.9 },
                 new double[] { base.getX() + width / 1.9, base.getY() + height, base.getZ() + width / 1.9 })) {
             Vector diff = player.getLocation().subtract(base).toVector();
-            if (diff.isZero())
+            if (diff.lengthSquared() == 0)
                 continue;
             diff = diff.normalize().setY(0);
             Vector force = player.getVelocity().add(diff.multiply(strength));

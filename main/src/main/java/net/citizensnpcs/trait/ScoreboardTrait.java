@@ -1,18 +1,11 @@
 package net.citizensnpcs.trait;
 
-import java.util.HashSet;
-import java.util.Set;
-
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
-import org.bukkit.scoreboard.Team.Option;
-import org.bukkit.scoreboard.Team.OptionStatus;
-
-import com.google.common.collect.Sets;
 
 import net.citizensnpcs.Settings.Setting;
 import net.citizensnpcs.api.CitizensAPI;
@@ -22,7 +15,6 @@ import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.persistence.Persist;
 import net.citizensnpcs.api.trait.Trait;
 import net.citizensnpcs.api.trait.TraitName;
-import net.citizensnpcs.api.util.SpigotUtil;
 import net.citizensnpcs.util.NMS;
 import net.citizensnpcs.util.Util;
 
@@ -34,8 +26,6 @@ public class ScoreboardTrait extends Trait {
     private String lastName;
     private final PerPlayerMetadata<Boolean> metadata;
     private ChatColor previousGlowingColor;
-    @Persist
-    private Set<String> tags = new HashSet<>();
 
     public ScoreboardTrait() {
         super("scoreboardtrait");
@@ -132,14 +122,6 @@ public class ScoreboardTrait extends Trait {
     @Override
     public void onSpawn() {
         changed = true;
-        if (SUPPORT_TAGS) {
-            try {
-                npc.getEntity().getScoreboardTags().clear();
-                npc.getEntity().getScoreboardTags().addAll(tags);
-            } catch (NoSuchMethodError e) {
-                SUPPORT_TAGS = false;
-            }
-        }
     }
 
     public void setColor(ChatColor color) {
@@ -168,61 +150,9 @@ public class ScoreboardTrait extends Trait {
                     ? npc.getEntity().getName()
                     : npc.getUniqueId().toString();
         }
-        if (SUPPORT_TAGS) {
-            try {
-                if (!npc.getEntity().getScoreboardTags().equals(tags)) {
-                    tags = Sets.newHashSet(npc.getEntity().getScoreboardTags());
-                }
-            } catch (NoSuchMethodError e) {
-                SUPPORT_TAGS = false;
-            }
-        }
-        if (SUPPORT_TEAM_SETOPTION) {
-            try {
-                OptionStatus visibility = nameVisibility ? OptionStatus.ALWAYS : OptionStatus.NEVER;
-                if (visibility != team.getOption(Option.NAME_TAG_VISIBILITY)) {
-                    changed = true;
-                }
-                team.setOption(Option.NAME_TAG_VISIBILITY, visibility);
-            } catch (NoSuchMethodError e) {
-                SUPPORT_TEAM_SETOPTION = false;
-            } catch (NoClassDefFoundError e) {
-                SUPPORT_TEAM_SETOPTION = false;
-            }
-        } else {
-            NMS.setTeamNameTagVisible(team, nameVisibility);
-        }
-        if (SUPPORT_COLLIDABLE_SETOPTION) {
-            try {
-                OptionStatus collide = npc.data().<Boolean> get(NPC.Metadata.COLLIDABLE, !npc.isProtected())
-                        ? OptionStatus.ALWAYS
-                        : OptionStatus.NEVER;
-                if (collide != team.getOption(Option.COLLISION_RULE)) {
-                    changed = true;
-                }
-                team.setOption(Option.COLLISION_RULE, collide);
-            } catch (NoSuchMethodError e) {
-                SUPPORT_COLLIDABLE_SETOPTION = false;
-            } catch (NoClassDefFoundError e) {
-                SUPPORT_COLLIDABLE_SETOPTION = false;
-            }
-        }
+        NMS.setTeamNameTagVisible(team, nameVisibility);
         if (color != null) {
-            if (SUPPORT_GLOWING_COLOR && SpigotUtil.getMinecraftPackage().contains("1_12_R1")) {
-                SUPPORT_GLOWING_COLOR = false;
-            }
-            if (SUPPORT_GLOWING_COLOR) {
-                try {
-                    if (team.getColor() == null || previousGlowingColor == null
-                            || previousGlowingColor != null && color != previousGlowingColor) {
-                        team.setColor(color);
-                        previousGlowingColor = color;
-                        changed = true;
-                    }
-                } catch (NoSuchMethodError err) {
-                    SUPPORT_GLOWING_COLOR = false;
-                }
-            } else if (team.getPrefix() == null || team.getPrefix().length() == 0 || previousGlowingColor == null
+            if (team.getPrefix() == null || team.getPrefix().length() == 0 || previousGlowingColor == null
                     || previousGlowingColor != null && !team.getPrefix().equals(previousGlowingColor.toString())) {
                 team.setPrefix(color.toString());
                 previousGlowingColor = color;
@@ -245,8 +175,4 @@ public class ScoreboardTrait extends Trait {
         changed = false;
     }
 
-    private static boolean SUPPORT_COLLIDABLE_SETOPTION = true;
-    private static boolean SUPPORT_GLOWING_COLOR = true;
-    private static boolean SUPPORT_TAGS = true;
-    private static boolean SUPPORT_TEAM_SETOPTION = true;
 }

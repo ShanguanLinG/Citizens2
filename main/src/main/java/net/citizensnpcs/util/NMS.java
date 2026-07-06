@@ -19,8 +19,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.command.BlockCommandSender;
 import org.bukkit.entity.Enderman;
@@ -64,9 +62,6 @@ import net.citizensnpcs.npc.ai.NPCHolder;
 import net.citizensnpcs.trait.EntityPoseTrait.EntityPose;
 import net.citizensnpcs.trait.MirrorTrait;
 import net.citizensnpcs.trait.PacketNPC;
-import net.citizensnpcs.trait.versioned.ArmadilloTrait.ArmadilloState;
-import net.citizensnpcs.trait.versioned.CamelTrait.CamelPose;
-import net.citizensnpcs.trait.versioned.SnifferTrait.SnifferState;
 import net.citizensnpcs.util.EntityPacketTracker.PacketAggregator;
 
 public class NMS {
@@ -124,17 +119,6 @@ public class NMS {
             Consumer<NPCKnockbackEvent> cb) {
         if (npc.getEntity() == null)
             return;
-        if (SUPPORT_KNOCKBACK_RESISTANCE && npc.getEntity() instanceof LivingEntity) {
-            try {
-                AttributeInstance attribute = ((LivingEntity) npc.getEntity())
-                        .getAttribute(Attribute.GENERIC_KNOCKBACK_RESISTANCE);
-                if (attribute != null) {
-                    strength *= 1 - attribute.getValue();
-                }
-            } catch (Throwable t) {
-                SUPPORT_KNOCKBACK_RESISTANCE = false;
-            }
-        }
         Vector vector = npc.getEntity().getVelocity();
         Vector impulse = new Vector(dx, 0, dz).normalize().multiply(strength);
         Vector delta = new Vector(vector.getX() / 2 - impulse.getX() - vector.getX(),
@@ -812,7 +796,7 @@ public class NMS {
         BRIDGE.setAllayDancing(entity, dancing);
     }
 
-    public static void setArmadilloState(Entity entity, ArmadilloState state) {
+    public static void setArmadilloState(Entity entity, Object state) {
         BRIDGE.setArmadilloState(entity, state);
     }
 
@@ -824,7 +808,7 @@ public class NMS {
         BRIDGE.setBoundingBox(entity, box);
     }
 
-    public static void setCamelPose(Entity entity, CamelPose pose) {
+    public static void setCamelPose(Entity entity, Object pose) {
         BRIDGE.setCamelPose(entity, pose);
     }
 
@@ -924,7 +908,7 @@ public class NMS {
         BRIDGE.setSneaking(entity, sneaking);
     }
 
-    public static void setSnifferState(Entity entity, SnifferState state) {
+    public static void setSnifferState(Entity entity, Object state) {
         BRIDGE.setSnifferState(entity, state);
     }
 

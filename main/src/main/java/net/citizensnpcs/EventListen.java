@@ -32,7 +32,6 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityPortalEvent;
 import org.bukkit.event.entity.EntityTameEvent;
 import org.bukkit.event.entity.EntityTargetEvent;
-import org.bukkit.event.entity.EntityTransformEvent;
 import org.bukkit.event.entity.ItemDespawnEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.entity.PlayerLeashEntityEvent;
@@ -55,8 +54,6 @@ import org.bukkit.event.vehicle.VehicleEnterEvent;
 import org.bukkit.event.world.ChunkEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
-import org.bukkit.event.world.EntitiesLoadEvent;
-import org.bukkit.event.world.EntitiesUnloadEvent;
 import org.bukkit.event.world.WorldLoadEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.plugin.PluginDescriptionFile;
@@ -114,7 +111,6 @@ import net.citizensnpcs.trait.Controllable;
 import net.citizensnpcs.trait.CurrentLocation;
 import net.citizensnpcs.trait.HologramTrait.HologramRenderer;
 import net.citizensnpcs.trait.ShopTrait;
-import net.citizensnpcs.trait.versioned.SnowmanTrait;
 import net.citizensnpcs.util.ChunkCoord;
 import net.citizensnpcs.util.Messages;
 import net.citizensnpcs.util.NMS;
@@ -128,53 +124,6 @@ public class EventListen implements Listener {
 
     EventListen() {
         skinUpdateTracker = new SkinUpdateTracker();
-        try {
-            Class.forName("org.bukkit.event.world.EntitiesLoadEvent");
-            Bukkit.getPluginManager().registerEvents(new Listener() {
-                @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-                public void onEntitiesLoad(EntitiesLoadEvent event) {
-                    loadNPCs(event);
-                }
-
-                @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-                public void onEntitiesUnload(EntitiesUnloadEvent event) {
-                    List<NPC> toDespawn = Lists
-                            .newArrayList(CitizensAPI.getLocationLookup().getNearbyNPCs(event.getWorld(),
-                                    new double[] { (event.getChunk().getX() << 4) - 0.5, 0,
-                                            (event.getChunk().getZ() << 4) - 0.5 },
-                                    new double[] { (event.getChunk().getX() + 1 << 4) + 0.5, 256,
-                                            (event.getChunk().getZ() + 1 << 4) + 0.5 }));
-                    for (Entity entity : event.getEntities()) {
-                        NPC npc = CitizensAPI.getNPCRegistry().getNPC(entity);
-                        // XXX npc#isSpawned() checks valid status which is now inconsistent on chunk unload
-                        // between different server software so check for npc.getEntity() == null instead.
-                        if (npc == null || npc.getEntity() == null || toDespawn.contains(npc))
-                            continue;
-
-                        toDespawn.add(npc);
-                    }
-                    if (toDespawn.isEmpty())
-                        return;
-                    unloadNPCs(event, toDespawn);
-                }
-            }, CitizensAPI.getPlugin());
-        } catch (Throwable ex) {
-        }
-        try {
-            Class.forName("org.bukkit.event.entity.EntityTransformEvent");
-            Bukkit.getPluginManager().registerEvents(new Listener() {
-                @EventHandler
-                public void onEntityTransform(EntityTransformEvent event) {
-                    NPC npc = CitizensAPI.getNPCRegistry().getNPC(event.getEntity());
-                    if (npc == null)
-                        return;
-                    if (npc.isProtected()) {
-                        event.setCancelled(true);
-                    }
-                }
-            }, CitizensAPI.getPlugin());
-        } catch (Throwable ex) {
-        }
         Class<?> kbc = null;
         try {
             kbc = Class.forName("com.destroystokyo.paper.event.entity.EntityKnockbackByEntityEvent");
@@ -284,10 +233,7 @@ public class EventListen implements Listener {
         if (npc == null)
             return;
         if (npc.getEntity() instanceof Snowman) {
-            boolean formSnow = npc.hasTrait(SnowmanTrait.class)
-                    ? npc.getTraitNullable(SnowmanTrait.class).shouldFormSnow()
-                    : npc.useMinecraftAI();
-            event.setCancelled(!formSnow);
+            event.setCancelled(!npc.useMinecraftAI());
         }
     }
 

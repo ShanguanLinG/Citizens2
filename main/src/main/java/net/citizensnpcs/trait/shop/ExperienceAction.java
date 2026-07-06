@@ -91,7 +91,7 @@ public class ExperienceAction extends NPCShopAction {
                 ExperienceAction old = (ExperienceAction) previous;
                 description = old.describe();
             }
-            return Util.createItem(Material.EXPERIENCE_BOTTLE, "XP Level", description);
+            return Util.createItem(Material.EXP_BOTTLE, "XP Level", description);
         }
 
         @Override
