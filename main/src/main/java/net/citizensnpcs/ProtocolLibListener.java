@@ -1,6 +1,7 @@
 package net.citizensnpcs;
 
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,7 @@ import net.citizensnpcs.api.event.NPCSpawnEvent;
 import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.trait.trait.MobType;
 import net.citizensnpcs.api.util.Messaging;
+import net.citizensnpcs.monitor.PacketMonitorService;
 import net.citizensnpcs.npc.ai.NPCHolder;
 import net.citizensnpcs.trait.HologramTrait.HologramRenderer;
 import net.citizensnpcs.trait.MirrorTrait;
@@ -51,7 +53,10 @@ import net.citizensnpcs.util.Util;
 
 public class ProtocolLibListener implements Listener {
     private ProtocolManager manager;
+    private final Map<String, PacketSignature> duplicatePacketCache = Maps.newConcurrentMap();
     private final Map<UUID, MirrorTrait> mirrorTraits = Maps.newConcurrentMap();
+    private final Map<Integer, NPC> monitorEntityIds = Maps.newConcurrentMap();
+    private final Map<UUID, NPC> monitorPlayerNPCs = Maps.newConcurrentMap();
     private Citizens plugin;
     private final Map<Integer, RotationTrait> rotationTraits = Maps.newConcurrentMap();
 
@@ -200,24 +205,160 @@ public class ProtocolLibListener implements Listener {
                 session.onPacketOverwritten();
             }
         });
+        registerDuplicatePacketCanceller();
+        registerPacketMonitor();
+    }
+
+    private String duplicateSignature(PacketType type, PacketContainer packet) {
+        Integer entityId = packet.getIntegers().readSafely(0);
+        if (entityId == null)
+            return null;
+
+        if (type == Server.ENTITY_HEAD_ROTATION) {
+            Byte headYaw = packet.getBytes().readSafely(0);
+            return headYaw == null ? null : entityId + ":head:" + headYaw;
+        }
+        if (type == Server.ENTITY_LOOK) {
+            Byte yaw = packet.getBytes().readSafely(0);
+            Byte pitch = packet.getBytes().readSafely(1);
+            return yaw == null || pitch == null ? null : entityId + ":look:" + yaw + ':' + pitch;
+        }
+        if (type == Server.ENTITY_TELEPORT) {
+            Integer x = packet.getIntegers().readSafely(1);
+            Integer y = packet.getIntegers().readSafely(2);
+            Integer z = packet.getIntegers().readSafely(3);
+            Byte yaw = packet.getBytes().readSafely(0);
+            Byte pitch = packet.getBytes().readSafely(1);
+            return x == null || y == null || z == null || yaw == null || pitch == null ? null
+                    : entityId + ":teleport:" + x + ':' + y + ':' + z + ':' + yaw + ':' + pitch;
+        }
+        return null;
     }
 
     private NPC getNPCFromPacket(PacketEvent event) {
         PacketContainer packet = event.getPacket();
-        try {
-            Object entityModifier = packet.getEntityModifier(event).read(0);
-            return entityModifier instanceof NPCHolder ? ((NPCHolder) entityModifier).getNPC() : null;
-        } catch (FieldAccessException | IllegalArgumentException ex) {
-            if (!LOGGED_ERROR) {
-                Messaging.severe(
-                        "Error retrieving entity from ID: ProtocolLib error? Suppressing further exceptions unless debugging.");
-                ex.printStackTrace();
-                LOGGED_ERROR = true;
-            } else if (Messaging.isDebugging()) {
-                ex.printStackTrace();
+        if (packet.getEntityModifier(event).size() > 0) {
+            try {
+                Object entityModifier = packet.getEntityModifier(event).read(0);
+                if (entityModifier instanceof NPCHolder) {
+                    return ((NPCHolder) entityModifier).getNPC();
+                }
+            } catch (FieldAccessException | IllegalArgumentException ex) {
+                if (!LOGGED_ERROR) {
+                    Messaging.severe(
+                            "Error retrieving entity from ID: ProtocolLib error? Suppressing further exceptions unless debugging.");
+                    ex.printStackTrace();
+                    LOGGED_ERROR = true;
+                } else if (Messaging.isDebugging()) {
+                    ex.printStackTrace();
+                }
             }
-            return null;
         }
+        Integer entityId = packet.getIntegers().readSafely(0);
+        if (entityId != null && monitorEntityIds.containsKey(entityId)) {
+            return monitorEntityIds.get(entityId);
+        }
+        int[] entityIds = packet.getIntegerArrays().readSafely(0);
+        if (entityIds != null && entityIds.length > 0) {
+            return monitorEntityIds.get(entityIds[0]);
+        }
+        return null;
+    }
+
+    private void registerDuplicatePacketCanceller() {
+        manager.addPacketListener(new PacketAdapter(plugin, ListenerPriority.HIGHEST,
+                Arrays.asList(Server.ENTITY_HEAD_ROTATION, Server.ENTITY_LOOK, Server.ENTITY_TELEPORT),
+                ListenerOptions.ASYNC) {
+            @Override
+            public void onPacketSending(PacketEvent event) {
+                if (event.isCancelled())
+                    return;
+
+                NPC npc = getNPCFromPacket(event);
+                if (npc == null)
+                    return;
+
+                String signature = duplicateSignature(event.getPacketType(), event.getPacket());
+                if (signature == null)
+                    return;
+
+                Integer entityId = event.getPacket().getIntegers().readSafely(0);
+                if (entityId == null)
+                    return;
+
+                long now = System.currentTimeMillis();
+                String key = event.getPlayer().getUniqueId() + ":" + npc.getId() + ":" + entityId + ":"
+                        + event.getPacketType().name();
+                PacketSignature previous = duplicatePacketCache.get(key);
+                if (previous != null && previous.signature.equals(signature) && now - previous.timestamp < 5000) {
+                    event.setCancelled(true);
+                    return;
+                }
+                duplicatePacketCache.put(key, new PacketSignature(signature, now));
+            }
+        });
+    }
+
+    private void recordPlayerInfo(PacketEvent event, PacketMonitorService monitor) {
+        List<PlayerInfoData> list = event.getPacket().getPlayerInfoDataLists().readSafely(0);
+        if (list == null || list.isEmpty())
+            return;
+
+        List<NPC> npcs = new ArrayList<>();
+        List<PlayerInfoData> matchedData = new ArrayList<>();
+        for (PlayerInfoData data : list) {
+            if (data == null || data.getProfile() == null)
+                continue;
+            NPC npc = monitorPlayerNPCs.get(data.getProfile().getUUID());
+            if (npc != null) {
+                npcs.add(npc);
+                matchedData.add(data);
+            }
+        }
+        if (npcs.isEmpty())
+            return;
+        for (int i = 0; i < npcs.size(); i++) {
+            NPC npc = npcs.get(i);
+            PlayerInfoData data = matchedData.get(i);
+            int bytes = PacketMonitorService.estimatePacketBytes(Server.PLAYER_INFO.name(), data);
+            monitor.recordProtocolPacket(Server.PLAYER_INFO.name(), event.getPlayer(), npc, bytes);
+        }
+    }
+
+    private void registerPacketMonitor() {
+        PacketMonitorService monitor = plugin.getPacketMonitorService();
+        if (monitor != null) {
+            monitor.markProtocolCapture();
+        }
+        manager.addPacketListener(new PacketAdapter(plugin, ListenerPriority.MONITOR,
+                Arrays.asList(Server.NAMED_ENTITY_SPAWN, Server.SPAWN_ENTITY, Server.SPAWN_ENTITY_LIVING,
+                        Server.ENTITY_METADATA, Server.ENTITY_EQUIPMENT, Server.ENTITY_HEAD_ROTATION,
+                        Server.ENTITY_LOOK, Server.REL_ENTITY_MOVE, Server.REL_ENTITY_MOVE_LOOK,
+                        Server.ENTITY_MOVE_LOOK, Server.ENTITY_TELEPORT, Server.ENTITY_DESTROY,
+                        Server.ENTITY_STATUS, Server.ENTITY_VELOCITY, Server.ANIMATION, Server.PLAYER_INFO,
+                        Server.SCOREBOARD_TEAM),
+                ListenerOptions.ASYNC) {
+            @Override
+            public void onPacketSending(PacketEvent event) {
+                if (event.isCancelled())
+                    return;
+
+                PacketMonitorService monitor = ProtocolLibListener.this.plugin.getPacketMonitorService();
+                if (monitor == null || !monitor.isRunning())
+                    return;
+
+                if (event.getPacketType() == Server.PLAYER_INFO) {
+                    recordPlayerInfo(event, monitor);
+                    return;
+                }
+                NPC npc = getNPCFromPacket(event);
+                if (npc == null)
+                    return;
+                String type = event.getPacketType().name();
+                monitor.recordProtocolPacket(type, event.getPlayer(), npc,
+                        PacketMonitorService.estimatePacketBytes(type, event.getPacket().getHandle()));
+            }
+        });
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -230,6 +371,8 @@ public class ProtocolLibListener implements Listener {
         if (event.getNPC().getEntity() == null)
             return;
         rotationTraits.remove(event.getNPC().getEntity().getEntityId());
+        monitorEntityIds.remove(event.getNPC().getEntity().getEntityId());
+        monitorPlayerNPCs.remove(event.getNPC().getEntity().getUniqueId());
         mirrorTraits.remove(event.getNPC().getEntity().getUniqueId());
     }
 
@@ -239,6 +382,12 @@ public class ProtocolLibListener implements Listener {
     }
 
     private void onSpawn(NPCEvent event) {
+        if (event.getNPC().getEntity() != null) {
+            monitorEntityIds.put(event.getNPC().getEntity().getEntityId(), event.getNPC());
+            if (event.getNPC().getEntity().getType() == EntityType.PLAYER) {
+                monitorPlayerNPCs.put(event.getNPC().getEntity().getUniqueId(), event.getNPC());
+            }
+        }
         if (event.getNPC().hasTrait(RotationTrait.class)) {
             rotationTraits.put(event.getNPC().getEntity().getEntityId(),
                     event.getNPC().getTraitNullable(RotationTrait.class));
@@ -262,4 +411,14 @@ public class ProtocolLibListener implements Listener {
     }
 
     private static boolean LOGGED_ERROR = false;
+
+    private static class PacketSignature {
+        private final String signature;
+        private final long timestamp;
+
+        private PacketSignature(String signature, long timestamp) {
+            this.signature = signature;
+            this.timestamp = timestamp;
+        }
+    }
 }

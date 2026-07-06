@@ -75,6 +75,7 @@ import net.citizensnpcs.npc.CitizensTraitFactory;
 import net.citizensnpcs.npc.NPCSelector;
 import net.citizensnpcs.npc.skin.Skin;
 import net.citizensnpcs.npc.skin.profile.ProfileFetcher;
+import net.citizensnpcs.monitor.PacketMonitorService;
 import net.citizensnpcs.trait.ShopTrait;
 import net.citizensnpcs.trait.shop.StoredShops;
 import net.citizensnpcs.util.Messages;
@@ -135,6 +136,8 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
         }
     };
     private CitizensNPCRegistry npcRegistry;
+    private CitizensOptimizations optimizations;
+    private PacketMonitorService packetMonitorService;
     private ProtocolLibListener protocolListener;
     private boolean saveOnDisable = true;
     private NPCDataStore saves;
@@ -247,6 +250,10 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
         return selector;
     }
 
+    public PacketMonitorService getPacketMonitorService() {
+        return packetMonitorService;
+    }
+
     @Override
     public ClassLoader getOwningClassLoader() {
         return getClassLoader();
@@ -337,6 +344,10 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
 
     @Override
     public void onDisable() {
+        if (packetMonitorService != null) {
+            packetMonitorService.stop();
+            packetMonitorService = null;
+        }
         if (!enabled)
             return;
 
@@ -362,6 +373,7 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
 
         CitizensAPI.setImplementation(this);
         config = new Settings(getDataFolder());
+        optimizations = new CitizensOptimizations(getDataFolder());
         setupTranslator();
         // Disable if the server is not using the compatible Minecraft version
         String mcVersion = SpigotUtil.getMinecraftPackage();
@@ -384,6 +396,8 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
             Bukkit.getPluginManager().disablePlugin(this);
             return;
         }
+        packetMonitorService = new PacketMonitorService(this);
+        packetMonitorService.start();
         npcRegistry = new CitizensNPCRegistry(saves, "citizens");
         temporaryRegistry = new CitizensNPCRegistry(new MemoryNPCDataStore(), "citizens-temporary");
         locationLookup = new LocationLookup(npcRegistry);
@@ -449,6 +463,12 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
     public void reload() throws NPCLoadException {
         Editor.leaveAll();
         config.reload();
+        if (optimizations != null) {
+            optimizations.reload(getDataFolder());
+        }
+        if (packetMonitorService != null) {
+            packetMonitorService.restart();
+        }
         despawnNPCs(false);
         ProfileFetcher.reset();
         Skin.clearCache();
@@ -573,6 +593,9 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
         @Override
         public void run() {
             Plugin plib = Bukkit.getPluginManager().getPlugin("ProtocolLib");
+            if (packetMonitorService != null) {
+                packetMonitorService.clearProtocolCapture();
+            }
             if (Setting.HOOK_PROTOCOLLIB.asBoolean() && plib != null && plib.isEnabled()
                     && ProtocolLibrary.getProtocolManager() != null) {
                 try {

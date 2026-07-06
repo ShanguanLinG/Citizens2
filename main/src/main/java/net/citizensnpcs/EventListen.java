@@ -304,8 +304,10 @@ public class EventListen implements Listener {
         if (!npc.data().get(NPC.Metadata.DROPS_ITEMS, false)) {
             event.getDrops().clear();
         }
-        Location location = npc.getStoredLocation();
         Bukkit.getPluginManager().callEvent(new NPCDeathEvent(npc, event));
+        if (event.getEntityType() == EntityType.PLAYER && CitizensOptimizations.get().humanFastRespawn()) return;
+
+        Location location = npc.getStoredLocation();
         npc.despawn(DespawnReason.DEATH);
 
         int delay = npc.data().get(NPC.Metadata.RESPAWN_DELAY, -1);

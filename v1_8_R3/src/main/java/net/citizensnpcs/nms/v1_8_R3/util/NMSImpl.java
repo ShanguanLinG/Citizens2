@@ -82,6 +82,7 @@ import net.citizensnpcs.api.util.BoundingBox;
 import net.citizensnpcs.api.util.EntityDim;
 import net.citizensnpcs.api.util.Messaging;
 import net.citizensnpcs.api.util.SpigotUtil.InventoryViewAPI;
+import net.citizensnpcs.monitor.PacketMonitorService;
 import net.citizensnpcs.nms.v1_8_R3.entity.ArmorStandController;
 import net.citizensnpcs.nms.v1_8_R3.entity.BatController;
 import net.citizensnpcs.nms.v1_8_R3.entity.BlazeController;
@@ -996,10 +997,11 @@ public class NMSImpl implements NMSBridge {
     public void sendPositionUpdate(org.bukkit.entity.Entity from, Collection<Player> to, boolean position,
             Float bodyYaw, Float pitch, Float headYaw) {
         Entity handle = getHandle(from);
-        if (bodyYaw == null) {
+        boolean sendBodyPitch = position || bodyYaw != null || pitch != null;
+        if (sendBodyPitch && bodyYaw == null) {
             bodyYaw = handle.yaw;
         }
-        if (pitch == null) {
+        if (sendBodyPitch && pitch == null) {
             pitch = handle.pitch;
         }
         List<Packet<?>> toSend = Lists.newArrayList();
@@ -1010,13 +1012,15 @@ public class NMSImpl implements NMSBridge {
             long dz = MathHelper.floor(handle.locZ * 32.0) - entry.zLoc;
             toSend.add(new PacketPlayOutRelEntityMoveLook(handle.getId(), (byte) dx, (byte) dy, (byte) dz,
                     (byte) (bodyYaw * 256.0F / 360.0F), (byte) (pitch * 256.0F / 360.0F), handle.onGround));
-        } else {
+        } else if (sendBodyPitch) {
             toSend.add(new PacketPlayOutEntityLook(handle.getId(), (byte) (bodyYaw * 256.0F / 360.0F),
                     (byte) (pitch * 256.0F / 360.0F), handle.onGround));
         }
         if (headYaw != null) {
             toSend.add(new PacketPlayOutEntityHeadRotation(handle, (byte) (headYaw * 256.0F / 360.0F)));
         }
+        if (toSend.isEmpty())
+            return;
         for (Player player : to) {
             sendPackets(player, toSend);
         }
@@ -1682,6 +1686,10 @@ public class NMSImpl implements NMSBridge {
     public static void sendPacket(Player player, Packet<?> packet) {
         if (packet == null)
             return;
+        PacketMonitorService monitor = PacketMonitorService.get();
+        if (monitor != null) {
+            monitor.recordInternalPacket(null, player, packet);
+        }
         ((EntityPlayer) getHandle(player)).playerConnection.sendPacket(packet);
     }
 
@@ -1694,16 +1702,24 @@ public class NMSImpl implements NMSBridge {
     public static void sendPackets(Player player, Iterable<Packet<?>> packets) {
         if (packets == null)
             return;
+        PacketMonitorService monitor = PacketMonitorService.get();
         for (Packet<?> packet : packets) {
+            if (monitor != null) {
+                monitor.recordInternalPacket(null, player, packet);
+            }
             ((EntityPlayer) getHandle(player)).playerConnection.sendPacket(packet);
         }
     }
 
     public static void sendPacketsNearby(Player from, Location location, Collection<Packet<?>> packets, double radius) {
         radius *= radius;
+        PacketMonitorService monitor = PacketMonitorService.get();
         for (Player player : CitizensAPI.getLocationLookup().getNearbyVisiblePlayers(from, location, radius)) {
             for (Packet<?> packet : packets) {
-                NMSImpl.sendPacket(player, packet);
+                if (monitor != null) {
+                    monitor.recordInternalPacket(from, player, packet);
+                }
+                ((EntityPlayer) getHandle(player)).playerConnection.sendPacket(packet);
             }
         }
     }

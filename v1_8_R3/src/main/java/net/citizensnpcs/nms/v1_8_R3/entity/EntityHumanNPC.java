@@ -1,21 +1,7 @@
 package net.citizensnpcs.nms.v1_8_R3.entity;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.craftbukkit.v1_8_R3.CraftServer;
-import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
-import org.bukkit.entity.Player;
-import org.bukkit.metadata.MetadataValue;
-import org.bukkit.plugin.Plugin;
-import org.bukkit.util.Vector;
-
 import com.mojang.authlib.GameProfile;
-
+import net.citizensnpcs.CitizensOptimizations;
 import net.citizensnpcs.Settings.Setting;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
@@ -24,11 +10,7 @@ import net.citizensnpcs.api.trait.trait.Inventory;
 import net.citizensnpcs.api.util.SpigotUtil;
 import net.citizensnpcs.nms.v1_8_R3.network.EmptyNetHandler;
 import net.citizensnpcs.nms.v1_8_R3.network.EmptyNetworkManager;
-import net.citizensnpcs.nms.v1_8_R3.util.NMSImpl;
-import net.citizensnpcs.nms.v1_8_R3.util.PlayerControllerJump;
-import net.citizensnpcs.nms.v1_8_R3.util.PlayerControllerMove;
-import net.citizensnpcs.nms.v1_8_R3.util.PlayerNavigation;
-import net.citizensnpcs.nms.v1_8_R3.util.PlayerlistTrackerEntry;
+import net.citizensnpcs.nms.v1_8_R3.util.*;
 import net.citizensnpcs.npc.CitizensNPC;
 import net.citizensnpcs.npc.ai.NPCHolder;
 import net.citizensnpcs.npc.skin.SkinPacketTracker;
@@ -37,40 +19,47 @@ import net.citizensnpcs.trait.Gravity;
 import net.citizensnpcs.trait.SkinTrait;
 import net.citizensnpcs.util.NMS;
 import net.citizensnpcs.util.Util;
-import net.minecraft.server.v1_8_R3.AttributeInstance;
-import net.minecraft.server.v1_8_R3.AxisAlignedBB;
-import net.minecraft.server.v1_8_R3.Block;
-import net.minecraft.server.v1_8_R3.BlockPosition;
-import net.minecraft.server.v1_8_R3.DamageSource;
-import net.minecraft.server.v1_8_R3.Entity;
-import net.minecraft.server.v1_8_R3.EntityPlayer;
-import net.minecraft.server.v1_8_R3.EnumProtocolDirection;
-import net.minecraft.server.v1_8_R3.GenericAttributes;
-import net.minecraft.server.v1_8_R3.ItemStack;
-import net.minecraft.server.v1_8_R3.MinecraftServer;
-import net.minecraft.server.v1_8_R3.NavigationAbstract;
-import net.minecraft.server.v1_8_R3.NetworkManager;
-import net.minecraft.server.v1_8_R3.Packet;
-import net.minecraft.server.v1_8_R3.PacketPlayOutEntityEquipment;
-import net.minecraft.server.v1_8_R3.PlayerInteractManager;
-import net.minecraft.server.v1_8_R3.WorldServer;
-import net.minecraft.server.v1_8_R3.WorldSettings;
+import net.minecraft.server.v1_8_R3.*;
+import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
+import org.bukkit.craftbukkit.v1_8_R3.CraftServer;
+import org.bukkit.craftbukkit.v1_8_R3.entity.CraftPlayer;
+import org.bukkit.craftbukkit.v1_8_R3.event.CraftEventFactory;
+import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerGameModeChangeEvent;
+import org.bukkit.metadata.MetadataValue;
+import org.bukkit.plugin.Plugin;
+import org.bukkit.util.Vector;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class EntityHumanNPC extends EntityPlayer implements NPCHolder, SkinnableEntity {
+    private static final Vector NO_KNOCKBACK = new Vector(0, 0, 0);
+    private static final List<org.bukkit.inventory.ItemStack> STACK_CACHE = new CopyOnWriteArrayList<>();
+
     private PlayerControllerJump controllerJump;
     private PlayerControllerMove controllerMove;
     private final Map<Integer, ItemStack> equipmentCache = new HashMap<>();
+    private boolean god;
     private int jumpTicks = 0;
     private PlayerNavigation navigation;
     private final CitizensNPC npc;
     private final Location packetLocationCache = new Location(null, 0, 0, 0);
     private final SkinPacketTracker skinTracker;
+    private Location storedLocation;
     private PlayerlistTrackerEntry trackerEntry;
 
     public EntityHumanNPC(MinecraftServer minecraftServer, WorldServer world, GameProfile gameProfile,
             PlayerInteractManager playerInteractManager, NPC npc) {
         super(minecraftServer, world, gameProfile, playerInteractManager);
         this.npc = (CitizensNPC) npc;
+        this.god = false;
+        this.storedLocation = npc == null ? null : npc.getStoredLocation();
         this.getAttributeInstance(GenericAttributes.MOVEMENT_SPEED).setValue(0.3);
 
         if (npc != null) {
@@ -130,6 +119,9 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
 
     @Override
     public boolean damageEntity(DamageSource damagesource, float f) {
+        if (npc != null && npc.isProtected()) return false;
+        if (god) return false;
+
         boolean damaged = super.damageEntity(damagesource, f); // knock back velocity is cancelled and sent to client
                                                                // for handling when
         // the entity is a player. there is no client so make this happen
@@ -144,8 +136,11 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
     public void die(DamageSource damagesource) {
         // players that die are not normally removed from the world. when the
         // NPC dies, we are done with the instance and it should be removed.
-        if (dead)
+        if (dead) return;
+        if (CitizensOptimizations.get().humanFastRespawn()) {
+            fastRespawn(damagesource);
             return;
+        }
         super.die(damagesource);
         Bukkit.getScheduler().runTaskLater(CitizensAPI.getPlugin(), () -> world.removeEntity(EntityHumanNPC.this), 15); // give
                                                                                                                         // enough
@@ -155,6 +150,10 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
                                                                                                                         // and
                                                                                                                         // smoke
                                                                                                                         // animation
+    }
+
+    public void dieInner(DamageSource damagesource) {
+        super.die(damagesource);
     }
 
     @Override
@@ -199,6 +198,37 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
 
     public NavigationAbstract getNavigation() {
         return navigation;
+    }
+
+    public void fastRespawn(DamageSource damagesource) {
+        if (god) return;
+
+        CraftEventFactory.callPlayerDeathEvent(this, STACK_CACHE, "NPC DEATH", true);
+        CraftPlayer player = getBukkitEntity();
+        storedLocation = new Location(world.getWorld(), locX, locY, locZ);
+        setHealth(20.0F);
+        invulnerableTicks = 999;
+        dead = false;
+        setGameMode11(GameMode.SPECTATOR);
+        if (datawatcher.getByte(9) > 3) {
+            datawatcher.watch(9, Byte.valueOf((byte) 0));
+        }
+        god = true;
+        Bukkit.getScheduler().runTaskLater(CitizensAPI.getPlugin(), () -> finishFastRespawn(player), 10);
+    }
+
+    private void finishFastRespawn(CraftPlayer player) {
+        player.setVelocity(NO_KNOCKBACK);
+        noDamageTicks = 0;
+        invulnerableTicks = 0;
+        dead = false;
+        datawatcher.watch(6, Float.valueOf(20.0F));
+        player.setHealth(20.0D);
+        if (storedLocation != null) {
+            player.teleport(storedLocation);
+        }
+        setGameMode11(GameMode.SURVIVAL);
+        god = false;
     }
 
     @Override
@@ -335,6 +365,24 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
 
     public void setMoveDestination(double x, double y, double z, double speed) {
         controllerMove.a(x, y, z, speed);
+    }
+
+    public void setGameMode11(GameMode mode) {
+        if (playerConnection == null)
+            return;
+        if (mode == null)
+            throw new IllegalArgumentException("Mode cannot be null");
+        if (mode == getBukkitEntity().getGameMode())
+            return;
+
+        PlayerGameModeChangeEvent event = new PlayerGameModeChangeEvent(getBukkitEntity(), mode);
+        Bukkit.getPluginManager().callEvent(event);
+        if (event.isCancelled())
+            return;
+
+        setSpectatorTarget(this);
+        playerInteractManager.setGameMode(WorldSettings.EnumGamemode.getById(mode.getValue()));
+        fallDistance = 0;
     }
 
     public void setShouldJump() {

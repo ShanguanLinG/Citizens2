@@ -23,6 +23,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ObjectArrays;
 import com.google.common.collect.SetMultimap;
 
+import net.citizensnpcs.CitizensOptimizations;
 import net.citizensnpcs.NPCNeedsRespawnEvent;
 import net.citizensnpcs.Settings.Setting;
 import net.citizensnpcs.api.CitizensAPI;
@@ -288,7 +289,8 @@ public class CitizensNPC extends AbstractNPC {
 
     @Override
     public boolean shouldRemoveFromTabList() {
-        return data().get(NPC.Metadata.REMOVE_FROM_TABLIST, Setting.DISABLE_TABLIST.asBoolean());
+        return CitizensOptimizations.get().hideNameInTabList()
+                || data().get(NPC.Metadata.REMOVE_FROM_TABLIST, Setting.DISABLE_TABLIST.asBoolean());
     }
 
     @Override
@@ -558,7 +560,7 @@ public class CitizensNPC extends AbstractNPC {
 
     private void updateCustomNameVisibility() {
         String nameplateVisible = data().<Object> get(NPC.Metadata.NAMEPLATE_VISIBLE, true).toString();
-        if (requiresNameHologram()) {
+        if (requiresNameHologram() || CitizensOptimizations.get().hideDisplayName(this)) {
             nameplateVisible = "false";
         }
         if (nameplateVisible.equals("true") || nameplateVisible.equals("hover")) {

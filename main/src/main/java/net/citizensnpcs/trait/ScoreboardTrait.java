@@ -7,6 +7,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
 
+import net.citizensnpcs.CitizensOptimizations;
 import net.citizensnpcs.Settings.Setting;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.LocationLookup.PerPlayerMetadata;
@@ -131,6 +132,7 @@ public class ScoreboardTrait extends Trait {
     public void update() {
         String forceVisible = npc.data().<Object> get(NPC.Metadata.NAMEPLATE_VISIBLE, true).toString();
         boolean nameVisibility = !npc.requiresNameHologram()
+                && !CitizensOptimizations.get().hideDisplayName(npc)
                 && (forceVisible.equals("true") || forceVisible.equals("hover"));
         Team team = getTeam();
         if (team == null)

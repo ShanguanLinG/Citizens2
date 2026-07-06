@@ -30,6 +30,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
+import net.citizensnpcs.CitizensOptimizations;
 import net.citizensnpcs.Settings.Setting;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.command.Arg.CompletionsProvider;
@@ -276,6 +277,9 @@ public class HologramTrait extends Trait {
         }
         boolean nameplateVisible = Boolean
                 .parseBoolean(npc.data().<Object> get(NPC.Metadata.NAMEPLATE_VISIBLE, true).toString());
+        if (CitizensOptimizations.get().hideDisplayName(npc)) {
+            nameplateVisible = false;
+        }
         if (npc.requiresNameHologram()) {
             if (nameLine != null && !nameplateVisible) {
                 nameLine.removeNPC();

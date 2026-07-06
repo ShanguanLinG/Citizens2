@@ -46,6 +46,7 @@ permissions:
       citizens.npc.command.ignoreerrors.globalcooldown: true 
   citizens.admin: {default: op}
   citizens.admin.avoid-limits: {default: op}
+  citizens.admin.packetmonitor: {default: op}
   citizens.admin.remove.all: {default: op}
   citizens.citizens.help: {default: op}
   citizens.help: {default: op}

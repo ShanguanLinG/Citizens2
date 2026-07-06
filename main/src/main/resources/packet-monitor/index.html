@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Citizens NPC 发包监控</title>
+    <link rel="stylesheet" href="/assets/packet-monitor.css">
+</head>
+<body>
+    <main class="shell">
+        <header class="header">
+            <div class="title-block">
+                <div class="product">Citizens Packet Monitor</div>
+                <h1>NPC 发包监控</h1>
+                <p>按 NPC 聚合 Citizens 出站包压力。诊断模式使用详细估算，不采集包内容。</p>
+                <div class="mode-line">采集模式 <span id="mode">等待数据</span></div>
+            </div>
+            <div class="header-actions">
+                <button type="button" id="reportButton">保存报告</button>
+                <button type="button" id="resetButton">重置统计</button>
+            </div>
+        </header>
+
+        <section class="metric-grid" aria-label="实时概览">
+            <article class="metric-card">
+                <span>每秒发包</span>
+                <strong id="pps">0</strong>
+            </article>
+            <article class="metric-card">
+                <span>每秒带宽</span>
+                <strong><span id="bps">0.0</span><small> KiB/s</small></strong>
+            </article>
+            <article class="metric-card">
+                <span>活跃 NPC</span>
+                <strong id="npcs">0</strong>
+            </article>
+            <article class="metric-card">
+                <span>接收玩家</span>
+                <strong id="players">0</strong>
+            </article>
+        </section>
+
+        <section class="grid">
+            <article class="panel span-12">
+                <div class="panel-head">
+                    <div>
+                        <h2>最近 60 秒发包趋势</h2>
+                        <p id="summary">等待快照...</p>
+                    </div>
+                </div>
+                <div class="chart" id="chart" aria-label="最近 60 秒发包趋势"></div>
+            </article>
+
+            <article class="panel span-6">
+                <div class="panel-head">
+                    <h2>当前最高 NPC：包类型拆分</h2>
+                    <p>按估算 KiB 排序</p>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table bytes-table">
+                        <colgroup>
+                            <col>
+                            <col class="col-bytes">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>包类型</th>
+                                <th class="num">KiB</th>
+                            </tr>
+                        </thead>
+                        <tbody id="npcPackets"></tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="panel span-6">
+                <div class="panel-head">
+                    <h2>当前最高 NPC：接收玩家分布</h2>
+                    <p>按估算 KiB 排序</p>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table bytes-table">
+                        <colgroup>
+                            <col>
+                            <col class="col-bytes">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>接收者</th>
+                                <th class="num">KiB</th>
+                            </tr>
+                        </thead>
+                        <tbody id="npcReceivers"></tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="panel span-4">
+                <div class="panel-head">
+                    <h2>Top NPC</h2>
+                    <p>按带宽排序</p>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table rank-table">
+                        <colgroup>
+                            <col>
+                            <col class="col-count">
+                            <col class="col-bytes">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>NPC</th>
+                                <th class="num">包数</th>
+                                <th class="num">KiB</th>
+                            </tr>
+                        </thead>
+                        <tbody id="topNPCs"></tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="panel span-4">
+                <div class="panel-head">
+                    <h2>Top 包类型</h2>
+                    <p>完整包名展示</p>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table rank-table">
+                        <colgroup>
+                            <col>
+                            <col class="col-count">
+                            <col class="col-bytes">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>类型</th>
+                                <th class="num">包数</th>
+                                <th class="num">KiB</th>
+                            </tr>
+                        </thead>
+                        <tbody id="topPackets"></tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="panel span-4">
+                <div class="panel-head">
+                    <h2>Top 接收玩家</h2>
+                    <p>按估算流量排序</p>
+                </div>
+                <div class="table-wrap">
+                    <table class="data-table rank-table">
+                        <colgroup>
+                            <col>
+                            <col class="col-count">
+                            <col class="col-bytes">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>玩家</th>
+                                <th class="num">包数</th>
+                                <th class="num">KiB</th>
+                            </tr>
+                        </thead>
+                        <tbody id="topReceivers"></tbody>
+                    </table>
+                </div>
+            </article>
+        </section>
+    </main>
+    <script src="/assets/packet-monitor.js"></script>
+</body>
+</html>

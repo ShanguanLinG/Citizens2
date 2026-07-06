@@ -13,6 +13,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
+import net.citizensnpcs.CitizensOptimizations;
 import net.citizensnpcs.api.npc.AbstractNPC;
 import net.citizensnpcs.api.npc.NPC;
 import net.citizensnpcs.api.util.Messaging;
@@ -22,6 +23,8 @@ import net.citizensnpcs.trait.PacketNPC;
 public class PlayerUpdateTask extends BukkitRunnable {
     private final List<PlayerTick> players = Lists.newArrayList();
     private final Set<UUID> uuids = Sets.newHashSet();
+    private boolean firstBoot = true;
+    private int updateCursor;
 
     @Override
     public void cancel() {
@@ -67,9 +70,33 @@ public class PlayerUpdateTask extends BukkitRunnable {
         }
         PLAYERS_PENDING_ADD.clear();
 
-        for (PlayerTick player : players) {
-            player.run();
+        if (players.isEmpty())
+            return;
+
+        double multiplier = 1.0;
+        CitizensOptimizations optimizations = CitizensOptimizations.get();
+        if (optimizations != null) {
+            multiplier = optimizations.npcMovementUpdateMultiplier();
         }
+
+        if (firstBoot || multiplier >= 1.0) {
+            for (PlayerTick player : players) {
+                player.run();
+            }
+            firstBoot = false;
+            updateCursor = 0;
+            return;
+        }
+
+        int updates = Math.max(1, (int) Math.ceil(players.size() * multiplier));
+        updates = Math.min(updates, players.size());
+        for (int i = 0; i < updates; i++) {
+            if (updateCursor >= players.size()) {
+                updateCursor = 0;
+            }
+            players.get(updateCursor++).run();
+        }
+        firstBoot = false;
     }
 
     private static class PlayerTick implements Runnable {

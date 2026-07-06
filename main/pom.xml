@@ -149,6 +149,7 @@
                     <include>plugin.yml</include>
                     <include>*.json</include>
                     <include>LICENSE</include>
+                    <include>packet-monitor/**</include>
                 </includes>
             </resource>
         </resources>

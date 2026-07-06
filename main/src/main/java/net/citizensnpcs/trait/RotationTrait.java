@@ -218,6 +218,7 @@ public class RotationTrait extends Trait {
         public void apply() {
             if (Math.abs(lastBodyYaw - bodyYaw) + Math.abs(lastHeadYaw - headYaw) + Math.abs(pitch - lastPitch) > 1) {
                 NMS.sendPositionUpdateNearby(entity, false, bodyYaw, pitch, headYaw);
+                record();
             }
         }
 
