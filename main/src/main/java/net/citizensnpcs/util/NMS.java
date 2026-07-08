@@ -681,6 +681,10 @@ public class NMS {
         BRIDGE.load(commands);
     }
 
+    public static void markPlayerActive(Player player) {
+        BRIDGE.markPlayerActive(player);
+    }
+
     public static void loadBridge(String rev) throws Exception {
         Class<?> entity = null;
         try {
@@ -774,6 +778,10 @@ public class NMS {
 
     public static boolean sendTabListAdd(Player recipient, Player listPlayer) {
         return BRIDGE.sendTabListAdd(recipient, listPlayer);
+    }
+
+    public static boolean sendTabListAdd(Player recipient, Collection<Player> players) {
+        return BRIDGE.sendTabListAdd(recipient, players);
     }
 
     public static void sendTabListRemove(Player recipient, Collection<Player> players) {

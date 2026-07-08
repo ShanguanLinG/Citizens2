@@ -12,6 +12,7 @@ import org.bukkit.entity.FishHook;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Minecart;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Snowman;
 import org.bukkit.entity.Vehicle;
 import org.bukkit.event.Cancellable;
@@ -58,6 +59,7 @@ import org.bukkit.event.world.WorldLoadEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.RegisteredListener;
+import org.bukkit.projectiles.ProjectileSource;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.util.Vector;
 
@@ -271,8 +273,13 @@ public class EventListen implements Listener {
         event.setCancelled(npc.isProtected());
 
         if (event instanceof EntityDamageByEntityEvent) {
-            NPCDamageByEntityEvent damageEvent = new NPCDamageByEntityEvent(npc, (EntityDamageByEntityEvent) event);
+            EntityDamageByEntityEvent damageByEntityEvent = (EntityDamageByEntityEvent) event;
+            NPCDamageByEntityEvent damageEvent = new NPCDamageByEntityEvent(npc, damageByEntityEvent);
             Bukkit.getPluginManager().callEvent(damageEvent);
+            Player activeDamager = getPlayerDamager(damageByEntityEvent);
+            if (activeDamager != null && CitizensOptimizations.get().hideBotsWhenPlayerIdle()) {
+                NMS.markPlayerActive(activeDamager);
+            }
             if (!damageEvent.isCancelled() || !(damageEvent.getDamager() instanceof Player))
                 return;
 
@@ -293,6 +300,16 @@ public class EventListen implements Listener {
         } else {
             Bukkit.getPluginManager().callEvent(new NPCDamageEvent(npc, event));
         }
+    }
+
+    private Player getPlayerDamager(EntityDamageByEntityEvent event) {
+        Entity damager = event.getDamager();
+        if (damager instanceof Player)
+            return (Player) damager;
+        if (!(damager instanceof Projectile))
+            return null;
+        ProjectileSource shooter = ((Projectile) damager).getShooter();
+        return shooter instanceof Player ? (Player) shooter : null;
     }
 
     @EventHandler(ignoreCancelled = true)

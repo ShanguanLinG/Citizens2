@@ -67,6 +67,19 @@ public class SkinPacketTracker {
         inProgress.remove(playerId);
     }
 
+    void notifyAddPacketCancelled(UUID playerId) {
+        inProgress.remove(playerId);
+    }
+
+    void notifyAddPacketSent(UUID playerId) {
+        PlayerEntry entry = inProgress.get(playerId);
+        if (entry == null)
+            return;
+
+        entry.addSent = true;
+        scheduleRemovePacket(entry, Setting.TABLIST_REMOVE_PACKET_DELAY.asTicks());
+    }
+
     /**
      * Notify the tracker that a remove packet has been sent to the specified player.
      *
@@ -111,6 +124,7 @@ public class SkinPacketTracker {
                 continue;
 
             // send packet now and later to ensure removal from player list
+            TAB_LIST_ADDER.cancelPackets(player, entity);
             NMS.sendTabListRemove(player, entity.getBukkitEntity());
             TAB_LIST_REMOVER.sendPacket(player, entity);
         }
@@ -178,6 +192,11 @@ public class SkinPacketTracker {
         PlayerEntry entry = inProgress.get(player.getUniqueId());
         if (entry != null) {
             entry.cancel();
+            TAB_LIST_REMOVER.cancelPackets(player, entity);
+            if (entry.addSent) {
+                scheduleRemovePacket(entry, Setting.TABLIST_REMOVE_PACKET_DELAY.asTicks());
+            }
+            return;
         } else {
             entry = new PlayerEntry(player);
         }
@@ -185,12 +204,11 @@ public class SkinPacketTracker {
 
         inProgress.put(player.getUniqueId(), entry);
         skin.apply(entity);
-        if (NMS.sendTabListAdd(player, entity.getBukkitEntity())) {
-            scheduleRemovePacket(entry, Setting.TABLIST_REMOVE_PACKET_DELAY.asTicks());
-        }
+        TAB_LIST_ADDER.sendPacket(player, entity);
     }
 
     private static class PlayerEntry {
+        boolean addSent;
         Player player;
         int removeCount;
         BukkitTask removeTask;
@@ -214,11 +232,13 @@ public class SkinPacketTracker {
         private void onPlayerQuit(PlayerQuitEvent event) {
             // this also causes any entries in the "inProgress" field to
             // be removed.
+            TAB_LIST_ADDER.cancelPackets(event.getPlayer());
             TAB_LIST_REMOVER.cancelPackets(event.getPlayer());
         }
     }
 
     private static PlayerListener LISTENER;
     private static int PACKET_DELAY_REMOVE = 2;
+    private static TabListAdder TAB_LIST_ADDER = new TabListAdder();
     private static TabListRemover TAB_LIST_REMOVER = new TabListRemover();
 }

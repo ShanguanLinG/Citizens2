@@ -5,7 +5,7 @@
     }
     var ids = {};
 
-    ["mode", "pps", "bps", "npcs", "players", "summary", "chart", "npcPackets", "npcReceivers",
+    ["mode", "pps", "bps", "bpsUnit", "npcs", "players", "summary", "chart", "npcPackets", "npcReceivers",
             "topNPCs", "topPackets", "topReceivers", "resetButton", "reportButton"].forEach(function (id) {
         ids[id] = document.getElementById(id);
     });
@@ -18,6 +18,20 @@
 
     function kib(bytes) {
         return (Number(bytes || 0) / 1024).toFixed(1);
+    }
+
+    function byteRate(bytes) {
+        var value = Number(bytes || 0);
+        var units = ["B/s", "KiB/s", "MiB/s", "GiB/s"];
+        var unit = 0;
+        while (value >= 1024 && unit < units.length - 1) {
+            value /= 1024;
+            unit++;
+        }
+        return {
+            value: unit === 0 ? String(Math.round(value)) : value.toFixed(1),
+            unit: units[unit]
+        };
     }
 
     function rowClass(name) {
@@ -78,7 +92,9 @@
             var snapshot = await response.json();
             setMode(snapshot);
             ids.pps.textContent = snapshot.packetsPerSecond;
-            ids.bps.textContent = kib(snapshot.bytesPerSecond);
+            var bandwidth = byteRate(snapshot.bytesPerSecond);
+            ids.bps.textContent = bandwidth.value;
+            ids.bpsUnit.textContent = " " + bandwidth.unit;
             ids.npcs.textContent = snapshot.activeNPCs;
             ids.players.textContent = snapshot.activeReceivers;
             ids.summary.textContent = "最近 " + snapshot.windowSeconds + " 秒："

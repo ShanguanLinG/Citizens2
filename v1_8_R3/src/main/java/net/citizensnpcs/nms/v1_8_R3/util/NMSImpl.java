@@ -676,6 +676,11 @@ public class NMSImpl implements NMSBridge {
     public void load(CommandManager commands) {
     }
 
+    @Override
+    public void markPlayerActive(Player player) {
+        PlayerlistTrackerEntry.markActive((EntityPlayer) getHandle(player));
+    }
+
     private void loadEntityTypes() {
         EntityControllers.setEntityControllerForType(EntityType.ARROW, ArrowController.class);
         EntityControllers.setEntityControllerForType(EntityType.ARMOR_STAND, ArmorStandController.class);
@@ -1028,11 +1033,24 @@ public class NMSImpl implements NMSBridge {
 
     @Override
     public boolean sendTabListAdd(Player recipient, Player listPlayer) {
+        return sendTabListAdd(recipient, Collections.singletonList(listPlayer));
+    }
+
+    @Override
+    public boolean sendTabListAdd(Player recipient, Collection<Player> listPlayers) {
         Preconditions.checkNotNull(recipient);
-        Preconditions.checkNotNull(listPlayer);
-        EntityPlayer entity = ((CraftPlayer) listPlayer).getHandle();
+        Preconditions.checkNotNull(listPlayers);
+        if (listPlayers.isEmpty())
+            return false;
+
+        EntityPlayer[] entities = new EntityPlayer[listPlayers.size()];
+        int i = 0;
+        for (Player listPlayer : listPlayers) {
+            entities[i] = ((CraftPlayer) listPlayer).getHandle();
+            i++;
+        }
         NMSImpl.sendPacket(recipient,
-                new PacketPlayOutPlayerInfo(PacketPlayOutPlayerInfo.EnumPlayerInfoAction.ADD_PLAYER, entity));
+                new PacketPlayOutPlayerInfo(PacketPlayOutPlayerInfo.EnumPlayerInfoAction.ADD_PLAYER, entities));
         return true;
     }
 

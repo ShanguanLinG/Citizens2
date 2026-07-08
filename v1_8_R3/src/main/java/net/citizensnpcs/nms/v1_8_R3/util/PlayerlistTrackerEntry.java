@@ -31,7 +31,7 @@ import net.minecraft.server.v1_8_R3.Vec3D;
 
 public class PlayerlistTrackerEntry extends EntityTrackerEntry {
     private static final Map<Integer, PlayerActivity> PLAYER_ACTIVITY = new HashMap<Integer, PlayerActivity>();
-    private static final Map<Integer, RevealBudget> REVEAL_BUDGETS = new HashMap<Integer, RevealBudget>();
+    private static final Map<Integer, VisibilityBudget> VISIBILITY_BUDGETS = new HashMap<Integer, VisibilityBudget>();
 
     private Map<EntityPlayer, Boolean> trackingMap;
     private final Set<Integer> hiddenPlayers = new HashSet<Integer>();
@@ -236,23 +236,26 @@ public class PlayerlistTrackerEntry extends EntityTrackerEntry {
         return hidden;
     }
 
+    private boolean shouldDelayVisibilityChange(EntityPlayer player) {
+        CitizensOptimizations config = CitizensOptimizations.get();
+        if (config == null || !config.npcSmoothRevealEnabled())
+            return false;
+
+        int playerId = player.getId();
+        VisibilityBudget budget = VISIBILITY_BUDGETS.get(playerId);
+        if (budget == null) {
+            budget = new VisibilityBudget();
+            VISIBILITY_BUDGETS.put(playerId, budget);
+        }
+        return !budget.tryAcquire(player.ticksLived, config.npcSmoothRevealMaxPerPlayerPerTick());
+    }
+
     private boolean shouldDelayReveal(EntityPlayer player) {
         int playerId = player.getId();
         if (!hiddenPlayers.contains(playerId))
             return false;
 
-        CitizensOptimizations config = CitizensOptimizations.get();
-        if (config == null || !config.npcSmoothRevealEnabled()) {
-            hiddenPlayers.remove(playerId);
-            return false;
-        }
-
-        RevealBudget budget = REVEAL_BUDGETS.get(playerId);
-        if (budget == null) {
-            budget = new RevealBudget();
-            REVEAL_BUDGETS.put(playerId, budget);
-        }
-        if (!budget.tryAcquire(player.ticksLived, config.npcSmoothRevealMaxPerPlayerPerTick()))
+        if (shouldDelayVisibilityChange(player))
             return true;
 
         hiddenPlayers.remove(playerId);
@@ -272,10 +275,14 @@ public class PlayerlistTrackerEntry extends EntityTrackerEntry {
         if (entityplayer instanceof EntityHumanNPC)
             return;
         if (shouldHideFrom(entityplayer)) {
-            hiddenPlayers.add(entityplayer.getId());
             if (isTracked(entityplayer)) {
+                if (shouldDelayVisibilityChange(entityplayer))
+                    return;
+                hiddenPlayers.add(entityplayer.getId());
                 clear(entityplayer);
                 removeTracked(entityplayer);
+            } else {
+                hiddenPlayers.add(entityplayer.getId());
             }
             return;
         }
@@ -332,6 +339,15 @@ public class PlayerlistTrackerEntry extends EntityTrackerEntry {
             return delegate.keySet().stream().map((Function<? super EntityPlayer, ? extends CraftPlayer>) EntityPlayer::getBukkitEntity).collect(Collectors.toSet());
         } else
             return tracker.trackedPlayers.stream().map((Function<? super EntityPlayer, ? extends CraftPlayer>) EntityPlayer::getBukkitEntity).collect(Collectors.toSet());
+    }
+
+    public static void markActive(EntityPlayer player) {
+        PlayerActivity activity = PLAYER_ACTIVITY.get(player.getId());
+        if (activity == null) {
+            PLAYER_ACTIVITY.put(player.getId(), new PlayerActivity(player, player.ticksLived));
+            return;
+        }
+        activity.markActive(player);
     }
 
     private static boolean getU(EntityTrackerEntry entry) {
@@ -392,9 +408,14 @@ public class PlayerlistTrackerEntry extends EntityTrackerEntry {
             record(player);
             return true;
         }
+
+        private void markActive(EntityPlayer player) {
+            lastActiveTick = player.ticksLived;
+            record(player);
+        }
     }
 
-    private static class RevealBudget {
+    private static class VisibilityBudget {
         private int tick = -1;
         private int used;
 

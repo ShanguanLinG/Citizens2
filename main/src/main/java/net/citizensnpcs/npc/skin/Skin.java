@@ -57,6 +57,11 @@ public class Skin {
 
             CACHE.put(this.skinName, this);
         }
+        SkinProfileCache.CachedSkin cached = SkinProfileCache.get(this.skinName);
+        if (cached != null) {
+            skinId = cached.skinId;
+            skinData = cached.skinData;
+        }
         // fetch();
     }
 
@@ -268,6 +273,7 @@ public class Skin {
         }
         skinId = profile.getId();
         skinData = SkinProperty.fromMojangProfile(profile);
+        SkinProfileCache.put(skinName, skinId, skinData);
 
         List<SkinnableEntity> entities = new ArrayList<>(pending.keySet());
         for (SkinnableEntity entity : entities) {
@@ -358,7 +364,9 @@ public class Skin {
         // cache skins for faster initial skin availability and
         // for use when the latest skin is not required.
         npc.data().setPersistent(CACHED_SKIN_UUID_NAME_METADATA, skinName);
-        npc.data().setPersistent(CACHED_SKIN_UUID_METADATA, skinId.toString());
+        if (skinId != null) {
+            npc.data().setPersistent(CACHED_SKIN_UUID_METADATA, skinId.toString());
+        }
         if (skinProperty.value != null) {
             skinTrait.setTexture(skinProperty.value, skinProperty.signature == null ? "" : skinProperty.signature);
             setNPCTexture(entity, skinProperty);

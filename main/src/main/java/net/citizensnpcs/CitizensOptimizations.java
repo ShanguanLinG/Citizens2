@@ -26,7 +26,8 @@ public class CitizensOptimizations {
             + "when the viewer is too high, too far away, idle for a long time, or when the bot is\n"
             + "outside the viewer's field of view / blocked by terrain. When an NPC becomes visible\n"
             + "again, smooth-reveal spreads the re-spawn packets over multiple ticks to avoid a\n"
-            + "short bandwidth spike.\n"
+            + "short bandwidth spike. The same budget is also used when hiding bots so despawn\n"
+            + "packets are spread over multiple ticks instead of all at once.\n"
             + "\n"
             + "Performance options control how often player-type NPCs are updated. A movement\n"
             + "update multiplier of 1.0 means normal speed. Lower values such as 0.8 or 0.5 rotate\n"
@@ -45,7 +46,7 @@ public class CitizensOptimizations {
             + "- npc.visibility.hide-display-name-names: raw NPC names whose floating name should be hidden.\n"
             + "- npc.visibility.hide-when-player-idle: stop bot tracking for players who have not moved or looked around.\n"
             + "- npc.visibility.hide-when-not-visible: hide bots outside the viewer's likely visible area.\n"
-            + "- npc.visibility.smooth-reveal.max-per-player-per-tick: maximum hidden bots restored per player each tick.\n"
+            + "- npc.visibility.smooth-reveal.max-per-player-per-tick: maximum bot visibility changes per player each tick.\n"
             + "- npc.performance.movement-update-multiplier: 1.0 is normal, lower values trade smoothness for performance.\n"
             + "- packet-monitor.max-runtime-seconds: safety timeout for manual diagnostic sessions.\n";
     private static final String FILE_NAME = "patched-config.yml";

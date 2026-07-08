@@ -25,6 +25,7 @@ import com.google.common.base.Predicates;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 
+import net.citizensnpcs.CitizensOptimizations;
 import net.citizensnpcs.Settings.Setting;
 import net.citizensnpcs.api.CitizensAPI;
 import net.citizensnpcs.api.npc.NPC;
@@ -341,7 +342,13 @@ public class SkinUpdateTracker {
 
         @Override
         public void run() {
-            while (!queue.isEmpty()) {
+            int maxUpdates = Integer.MAX_VALUE;
+            CitizensOptimizations optimizations = CitizensOptimizations.get();
+            if (optimizations != null && optimizations.npcSmoothRevealEnabled()) {
+                maxUpdates = Math.max(1,
+                        Bukkit.getOnlinePlayers().size() * optimizations.npcSmoothRevealMaxPerPlayerPerTick());
+            }
+            for (int i = 0; i < maxUpdates && !queue.isEmpty(); i++) {
                 UpdateInfo info = queue.remove();
                 info.entity.getSkinTracker().updateViewer(info.player);
             }

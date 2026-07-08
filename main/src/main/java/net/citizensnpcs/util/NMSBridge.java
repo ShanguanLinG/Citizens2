@@ -154,6 +154,9 @@ public interface NMSBridge {
 
     public void load(CommandManager commands);
 
+    public default void markPlayerActive(Player player) {
+    }
+
     public void look(Entity from, Entity to);
 
     public void look(Entity entity, float yaw, float pitch);
@@ -189,6 +192,14 @@ public interface NMSBridge {
             Float headYaw);
 
     public boolean sendTabListAdd(Player recipient, Player listPlayer);
+
+    public default boolean sendTabListAdd(Player recipient, Collection<Player> listPlayers) {
+        boolean sent = false;
+        for (Player player : listPlayers) {
+            sent |= sendTabListAdd(recipient, player);
+        }
+        return sent;
+    }
 
     public void sendTabListRemove(Player recipient, Collection<Player> players);
 
