@@ -41,6 +41,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class EntityHumanNPC extends EntityPlayer implements NPCHolder, SkinnableEntity {
     private static final Vector NO_KNOCKBACK = new Vector(0, 0, 0);
     private static final List<org.bukkit.inventory.ItemStack> STACK_CACHE = new CopyOnWriteArrayList<>();
+    private static boolean playerDeathEventMethodLookupComplete;
+    private static java.lang.reflect.Method playerDeathEventMethod;
 
     private PlayerControllerJump controllerJump;
     private PlayerControllerMove controllerMove;
@@ -200,10 +202,91 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
         return navigation;
     }
 
+    private static void callPlayerDeathEvent(EntityPlayer player) {
+        java.lang.reflect.Method method = playerDeathEventMethod;
+        if (!playerDeathEventMethodLookupComplete) {
+            method = getPlayerDeathEventMethod(EntityPlayer.class, List.class, String.class, boolean.class);
+            if (method == null) {
+                method = findCompatiblePlayerDeathEventMethod();
+            }
+            if (method != null) {
+                method.setAccessible(true);
+            }
+            playerDeathEventMethod = method;
+            playerDeathEventMethodLookupComplete = true;
+        }
+        if (method == null)
+            return;
+
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        Object[] args = new Object[parameterTypes.length];
+        for (int i = 0; i < parameterTypes.length; i++) {
+            Class<?> type = parameterTypes[i];
+            if (type.isAssignableFrom(EntityPlayer.class)) {
+                args[i] = player;
+            } else if (List.class.isAssignableFrom(type)) {
+                args[i] = STACK_CACHE;
+            } else if (type == String.class) {
+                args[i] = "NPC DEATH";
+            } else if (type == boolean.class || type == Boolean.class) {
+                args[i] = true;
+            }
+        }
+
+        try {
+            method.invoke(null, args);
+        } catch (ReflectiveOperationException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static java.lang.reflect.Method findCompatiblePlayerDeathEventMethod() {
+        java.lang.reflect.Method method = getPlayerDeathEventMethod(EntityPlayer.class, List.class, String.class);
+        if (method != null)
+            return method;
+
+        method = findPlayerDeathEventMethod(CraftEventFactory.class.getMethods());
+        return method == null ? findPlayerDeathEventMethod(CraftEventFactory.class.getDeclaredMethods()) : method;
+    }
+
+    private static java.lang.reflect.Method getPlayerDeathEventMethod(Class<?>... parameterTypes) {
+        try {
+            return CraftEventFactory.class.getMethod("callPlayerDeathEvent", parameterTypes);
+        } catch (NoSuchMethodException e) {
+            try {
+                return CraftEventFactory.class.getDeclaredMethod("callPlayerDeathEvent", parameterTypes);
+            } catch (NoSuchMethodException ignored) {
+                return null;
+            }
+        }
+    }
+
+    private static java.lang.reflect.Method findPlayerDeathEventMethod(java.lang.reflect.Method[] methods) {
+        for (java.lang.reflect.Method method : methods) {
+            if (!method.getName().equals("callPlayerDeathEvent"))
+                continue;
+            Class<?>[] parameterTypes = method.getParameterTypes();
+            if (parameterTypes.length == 0 || parameterTypes.length > 4)
+                continue;
+            if (!parameterTypes[0].isAssignableFrom(EntityPlayer.class))
+                continue;
+
+            boolean compatible = true;
+            for (int i = 1; i < parameterTypes.length; i++) {
+                Class<?> type = parameterTypes[i];
+                compatible &= List.class.isAssignableFrom(type) || type == String.class || type == boolean.class
+                        || type == Boolean.class;
+            }
+            if (compatible)
+                return method;
+        }
+        return null;
+    }
+
     public void fastRespawn(DamageSource damagesource) {
         if (god) return;
 
-        CraftEventFactory.callPlayerDeathEvent(this, STACK_CACHE, "NPC DEATH", true);
+        callPlayerDeathEvent(this);
         CraftPlayer player = getBukkitEntity();
         storedLocation = new Location(world.getWorld(), locX, locY, locZ);
         setHealth(20.0F);
