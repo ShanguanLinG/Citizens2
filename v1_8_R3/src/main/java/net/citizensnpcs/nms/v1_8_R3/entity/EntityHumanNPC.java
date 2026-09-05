@@ -380,11 +380,12 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
             return;
         }
         super.K();
+        Player bukkitEntity = getBukkitEntity();
         boolean navigating = npc.getNavigator().isNavigating() || controllerMove.a();
-        if (!navigating && getBukkitEntity() != null
+        if (!navigating && bukkitEntity != null
                 && (!npc.hasTrait(Gravity.class) || npc.getOrAddTrait(Gravity.class).hasGravity())
-                && Util.isLoaded(getBukkitEntity().getLocation(LOADED_LOCATION))
-                && (!npc.isProtected() || SpigotUtil.checkYSafe(locY, getBukkitEntity().getWorld()))) {
+                && Util.isLoaded(bukkitEntity.getLocation(LOADED_LOCATION))
+                && (!npc.isProtected() || SpigotUtil.checkYSafe(locY, bukkitEntity.getWorld()))) {
             moveWithFallDamage(0, 0);
         }
         if (Math.abs(motX) < EPSILON && Math.abs(motY) < EPSILON && Math.abs(motZ) < EPSILON) {
@@ -397,7 +398,9 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
             moveOnCurrentHeading();
         }
         updateAI();
-        bL();
+        if (ae()) {
+            bL();
+        }
         if (npc.useMinecraftAI()) {
             foodData.a(this);
         }

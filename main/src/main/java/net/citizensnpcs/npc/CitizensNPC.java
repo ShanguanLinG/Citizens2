@@ -68,6 +68,14 @@ public class CitizensNPC extends AbstractNPC {
     private EntityController entityController;
     private final CitizensNavigator navigator = new CitizensNavigator(this);
     private int updateCounter = 0;
+    private boolean customNameVisibilityDirty = true;
+    private String cachedNameplateVisible;
+    private long cachedNameVisibilityRevision = Long.MIN_VALUE;
+    private boolean cachedHologramRenderer;
+    private boolean cachedAlwaysUseNameHologram;
+    private boolean cachedAlwaysUseNameHologramSetting;
+    private boolean cachedRequiresNameHologram;
+    private boolean nameHologramCacheInitialized;
 
     public CitizensNPC(UUID uuid, int id, String name, EntityController controller, NPCRegistry registry) {
         super(uuid, id, name, registry);
@@ -193,8 +201,21 @@ public class CitizensNPC extends AbstractNPC {
 
     @Override
     public boolean requiresNameHologram() {
-        return !data().has(NPC.Metadata.HOLOGRAM_RENDERER)
-                && (super.requiresNameHologram() || Setting.ALWAYS_USE_NAME_HOLOGRAM.asBoolean());
+        boolean hasHologramRenderer = data().has(NPC.Metadata.HOLOGRAM_RENDERER);
+        boolean alwaysUseNameHologram = data().get(NPC.Metadata.ALWAYS_USE_NAME_HOLOGRAM, false);
+        boolean alwaysUseNameHologramSetting = Setting.ALWAYS_USE_NAME_HOLOGRAM.asBoolean();
+        if (!nameHologramCacheInitialized || hasHologramRenderer != cachedHologramRenderer
+                || alwaysUseNameHologram != cachedAlwaysUseNameHologram
+                || alwaysUseNameHologramSetting != cachedAlwaysUseNameHologramSetting) {
+            cachedRequiresNameHologram = !hasHologramRenderer
+                    && (super.requiresNameHologram() || alwaysUseNameHologramSetting);
+            cachedHologramRenderer = hasHologramRenderer;
+            cachedAlwaysUseNameHologram = alwaysUseNameHologram;
+            cachedAlwaysUseNameHologramSetting = alwaysUseNameHologramSetting;
+            nameHologramCacheInitialized = true;
+            customNameVisibilityDirty = true;
+        }
+        return cachedRequiresNameHologram;
     }
 
     private void resetCachedCoord() {
@@ -246,6 +267,8 @@ public class CitizensNPC extends AbstractNPC {
             newController = packet.wrap(newController);
         }
         entityController = newController;
+        nameHologramCacheInitialized = false;
+        customNameVisibilityDirty = true;
         if (wasSpawned) {
             spawn(prev, SpawnReason.RESPAWN);
         }
@@ -270,7 +293,9 @@ public class CitizensNPC extends AbstractNPC {
 
     @Override
     protected void setNameInternal(String name) {
+        nameHologramCacheInitialized = false;
         super.setNameInternal(name);
+        customNameVisibilityDirty = true;
         if (requiresNameHologram() && !hasTrait(HologramTrait.class)) {
             addTrait(HologramTrait.class);
         }
@@ -316,6 +341,7 @@ public class CitizensNPC extends AbstractNPC {
             at.getChunk().load();
         }
         getOrAddTrait(CurrentLocation.class).setLocation(at);
+        customNameVisibilityDirty = true;
         entityController.create(at.clone(), this);
         getEntity().setMetadata("NPC", new FixedMetadataValue(CitizensAPI.getPlugin(), true));
         getEntity().setMetadata("NPC-ID", new FixedMetadataValue(CitizensAPI.getPlugin(), getId()));
@@ -530,6 +556,7 @@ public class CitizensNPC extends AbstractNPC {
             updateCustomNameVisibility();
 
             if (isLiving) {
+                NMS.removeArrowsFromBody((LivingEntity) getEntity());
                 NMS.setKnockbackResistance((LivingEntity) getEntity(), isProtected() ? 1D : 0D);
                 if (SUPPORT_PICKUP_ITEMS) {
                     ((LivingEntity) getEntity()).setCanPickupItems(data().get(NPC.Metadata.PICKUP_ITEMS, false));
@@ -559,14 +586,33 @@ public class CitizensNPC extends AbstractNPC {
     }
 
     private void updateCustomNameVisibility() {
-        String nameplateVisible = data().<Object> get(NPC.Metadata.NAMEPLATE_VISIBLE, true).toString();
-        if (requiresNameHologram() || CitizensOptimizations.get().hideDisplayName(this)) {
+        String configuredNameplateVisible = data().<Object> get(NPC.Metadata.NAMEPLATE_VISIBLE, true).toString();
+        boolean hasHologramRenderer = data().has(NPC.Metadata.HOLOGRAM_RENDERER);
+        boolean alwaysUseNameHologram = data().get(NPC.Metadata.ALWAYS_USE_NAME_HOLOGRAM, false);
+        boolean alwaysUseNameHologramSetting = Setting.ALWAYS_USE_NAME_HOLOGRAM.asBoolean();
+        CitizensOptimizations optimizations = CitizensOptimizations.get();
+        long visibilityRevision = optimizations.visibilityRevision();
+        if (!customNameVisibilityDirty && configuredNameplateVisible.equals(cachedNameplateVisible)
+                && hasHologramRenderer == cachedHologramRenderer
+                && alwaysUseNameHologram == cachedAlwaysUseNameHologram
+                && alwaysUseNameHologramSetting == cachedAlwaysUseNameHologramSetting
+                && visibilityRevision == cachedNameVisibilityRevision) {
+            return;
+        }
+        String nameplateVisible = configuredNameplateVisible;
+        if (requiresNameHologram() || optimizations.hideDisplayName(this)) {
             nameplateVisible = "false";
         }
         if (nameplateVisible.equals("true") || nameplateVisible.equals("hover")) {
             updateCustomName();
         }
         getEntity().setCustomNameVisible(Boolean.parseBoolean(nameplateVisible));
+        cachedNameplateVisible = configuredNameplateVisible;
+        cachedHologramRenderer = hasHologramRenderer;
+        cachedAlwaysUseNameHologram = alwaysUseNameHologram;
+        cachedAlwaysUseNameHologramSetting = alwaysUseNameHologramSetting;
+        cachedNameVisibilityRevision = visibilityRevision;
+        customNameVisibilityDirty = false;
     }
 
     private void updateFlyableState() {

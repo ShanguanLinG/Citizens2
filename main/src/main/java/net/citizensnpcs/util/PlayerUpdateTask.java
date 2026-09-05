@@ -124,6 +124,6 @@ public class PlayerUpdateTask extends BukkitRunnable {
         PLAYERS_PENDING_ADD.add(entity);
     }
 
-    private static List<Entity> PLAYERS_PENDING_ADD = new ArrayList<>();
-    private static List<Entity> PLAYERS_PENDING_REMOVE = new ArrayList<>();
+    private static final List<Entity> PLAYERS_PENDING_ADD = new ArrayList<>();
+    private static final Set<Entity> PLAYERS_PENDING_REMOVE = Sets.newHashSet();
 }

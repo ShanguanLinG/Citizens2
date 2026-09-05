@@ -186,6 +186,9 @@ public interface NMSBridge {
 
     public void removeHookIfNecessary(FishHook entity);
 
+    public default void removeArrowsFromBody(LivingEntity entity) {
+    }
+
     public void replaceTrackerEntry(Entity entity);
 
     public void sendPositionUpdate(Entity from, Collection<Player> to, boolean position, Float bodyYaw, Float pitch,

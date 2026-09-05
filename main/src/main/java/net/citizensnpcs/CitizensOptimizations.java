@@ -1,16 +1,17 @@
 package net.citizensnpcs;
 
+import net.citizensnpcs.api.npc.NPC;
+import org.bukkit.ChatColor;
+import org.bukkit.configuration.file.YamlConfiguration;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
-
-import org.bukkit.ChatColor;
-import org.bukkit.configuration.file.YamlConfiguration;
-
-import net.citizensnpcs.api.npc.NPC;
+import java.util.WeakHashMap;
 
 public class CitizensOptimizations {
     private static final String CONFIG_HEADER = "Citizens patched configuration\n"
@@ -53,6 +54,8 @@ public class CitizensOptimizations {
     private static CitizensOptimizations instance;
 
     private final File configFile;
+    private final Map<NPC, CachedNameVisibility> hideDisplayNameCache = new WeakHashMap<>();
+    private long visibilityRevision;
 
     private double hideBotsAboveY = 128;
     private double hideBotsDistance = 32;
@@ -146,9 +149,30 @@ public class CitizensOptimizations {
         if (!hideDisplayName || npc == null || hideDisplayNameNames.isEmpty()) {
             return false;
         }
-        return hideDisplayNameNames.contains(normalizeName(npc.getName()))
-                || hideDisplayNameNames.contains(normalizeName(npc.getRawName()))
+        String rawName = npc.getRawName();
+        CachedNameVisibility cached = hideDisplayNameCache.get(npc);
+        if (cached != null && cached.rawName.equals(rawName)) {
+            return cached.hidden;
+        }
+        boolean hidden = hideDisplayNameNames.contains(normalizeName(npc.getName()))
+                || hideDisplayNameNames.contains(normalizeName(rawName))
                 || hideDisplayNameNames.contains(normalizeName(npc.getFullName()));
+        hideDisplayNameCache.put(npc, new CachedNameVisibility(rawName, hidden));
+        return hidden;
+    }
+
+    public long visibilityRevision() {
+        return visibilityRevision;
+    }
+
+    private static final class CachedNameVisibility {
+        private final String rawName;
+        private final boolean hidden;
+
+        private CachedNameVisibility(String rawName, boolean hidden) {
+            this.rawName = rawName;
+            this.hidden = hidden;
+        }
     }
 
     public boolean hideNameInTabList() {
@@ -269,6 +293,8 @@ public class CitizensOptimizations {
         packetMonitorWindowSeconds = Math.max(1,
                 config.getInt("packet-monitor.window-seconds", packetMonitorWindowSeconds));
 
+        hideDisplayNameCache.clear();
+        visibilityRevision++;
         save(config, configFile);
     }
 

@@ -753,6 +753,10 @@ public class NMS {
         BRIDGE.removeHookIfNecessary(entity);
     }
 
+    public static void removeArrowsFromBody(LivingEntity entity) {
+        BRIDGE.removeArrowsFromBody(entity);
+    }
+
     public static void replaceTracker(Entity entity) {
         BRIDGE.replaceTrackerEntry(entity);
     }

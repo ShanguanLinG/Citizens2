@@ -893,33 +893,33 @@ public class NMSImpl implements NMSBridge {
 
     @Override
     public Runnable playerTicker(NPC npc, Player next) {
+        final EntityPlayer handle = (EntityPlayer) getHandle(next);
         return () -> {
             if (!next.isValid())
                 return;
-            EntityPlayer entity = (EntityPlayer) getHandle(next);
-            boolean removeFromPlayerList = ((NPCHolder) entity).getNPC().data().get("removefromplayerlist",
+            boolean removeFromPlayerList = npc.data().get("removefromplayerlist",
                     Setting.REMOVE_PLAYERS_FROM_PLAYER_LIST.asBoolean());
-            entity.l();
+            handle.l();
             if (!removeFromPlayerList)
                 return;
-            if (!entity.dead) {
+            if (!handle.dead) {
                 try {
-                    entity.world.g(entity);
+                    handle.world.g(handle);
                 } catch (Throwable throwable) {
                     CrashReport crashreport = CrashReport.a(throwable, "Ticking player");
                     CrashReportSystemDetails crashreportsystemdetails = crashreport.a("Player being ticked");
-                    entity.appendEntityCrashDetails(crashreportsystemdetails);
+                    handle.appendEntityCrashDetails(crashreportsystemdetails);
                     throw new ReportedException(crashreport);
                 }
             }
-            if (entity.dead) {
-                entity.world.removeEntity(entity);
+            if (handle.dead) {
+                handle.world.removeEntity(handle);
             } else if (!removeFromPlayerList) {
-                if (!entity.world.players.contains(entity)) {
-                    entity.world.players.add(entity);
+                if (!handle.world.players.contains(handle)) {
+                    handle.world.players.add(handle);
                 }
             } else {
-                entity.world.players.remove(entity);
+                handle.world.players.remove(handle);
             }
         };
     }
@@ -970,6 +970,14 @@ public class NMSImpl implements NMSBridge {
         if (npc.isProtected()) {
             hook.hooked = null;
             hook.getBukkitEntity().remove();
+        }
+    }
+
+    @Override
+    public void removeArrowsFromBody(LivingEntity entity) {
+        EntityLiving handle = NMSImpl.getHandle(entity);
+        if (handle != null && handle.bv() > 0) {
+            handle.o(0);
         }
     }
 
