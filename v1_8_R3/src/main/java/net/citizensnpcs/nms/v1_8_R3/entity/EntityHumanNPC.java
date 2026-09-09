@@ -226,8 +226,12 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
                 args[i] = player;
             } else if (List.class.isAssignableFrom(type)) {
                 args[i] = STACK_CACHE;
-            } else if (type == String.class) {
-                args[i] = "NPC DEATH";
+            } else if (type == String.class || isAdventureComponent(type)) {
+                try {
+                    args[i] = createDeathMessage(type);
+                } catch (ReflectiveOperationException e) {
+                    return;
+                }
             } else if (type == boolean.class || type == Boolean.class) {
                 args[i] = true;
             }
@@ -275,7 +279,7 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
             for (int i = 1; i < parameterTypes.length; i++) {
                 Class<?> type = parameterTypes[i];
                 compatible &= List.class.isAssignableFrom(type) || type == String.class || type == boolean.class
-                        || type == Boolean.class;
+                        || type == Boolean.class || isAdventureComponent(type);
             }
             if (compatible)
                 return method;
@@ -283,10 +287,26 @@ public class EntityHumanNPC extends EntityPlayer implements NPCHolder, Skinnable
         return null;
     }
 
+    private static boolean isAdventureComponent(Class<?> type) {
+        return "net.kyori.adventure.text.Component".equals(type.getName());
+    }
+
+    private static Object createDeathMessage(Class<?> type) throws ReflectiveOperationException {
+        if (type == String.class)
+            return "NPC DEATH";
+        if (!isAdventureComponent(type))
+            return null;
+        return type.getMethod("text", String.class).invoke(null, "NPC DEATH");
+    }
+
     public void fastRespawn(DamageSource damagesource) {
         if (god) return;
 
         callPlayerDeathEvent(this);
+        if (npc != null && !npc.isSpawned()) {
+            world.removeEntity(this);
+            return;
+        }
         CraftPlayer player = getBukkitEntity();
         storedLocation = new Location(world.getWorld(), locX, locY, locZ);
         setHealth(20.0F);

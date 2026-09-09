@@ -322,16 +322,18 @@ public class EventListen implements Listener {
             event.getDrops().clear();
         }
         Bukkit.getPluginManager().callEvent(new NPCDeathEvent(npc, event));
-        if (event.getEntityType() == EntityType.PLAYER && CitizensOptimizations.get().humanFastRespawn()) return;
+        int delay = npc.data().get(NPC.Metadata.RESPAWN_DELAY, -1);
+        boolean fastRespawn = event.getEntityType() == EntityType.PLAYER
+                && CitizensOptimizations.get().humanFastRespawn();
+        if (fastRespawn && delay < 0) return;
 
         Location location = npc.getStoredLocation();
         npc.despawn(DespawnReason.DEATH);
 
-        int delay = npc.data().get(NPC.Metadata.RESPAWN_DELAY, -1);
         if (delay < 0)
             return;
 
-        int deathAnimationTicks = event.getEntity() instanceof LivingEntity ? 20 : 2;
+        int deathAnimationTicks = fastRespawn ? 0 : event.getEntity() instanceof LivingEntity ? 20 : 2;
         Bukkit.getScheduler().scheduleSyncDelayedTask(CitizensAPI.getPlugin(), () -> {
             if (!npc.isSpawned() && npc.getOwningRegistry().getByUniqueId(npc.getUniqueId()) == npc) {
                 npc.spawn(location, SpawnReason.TIMED_RESPAWN);
